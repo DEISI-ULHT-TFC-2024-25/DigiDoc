@@ -1,0 +1,10 @@
+Cartão de Cidadão
+Passaporte
+Cartão de Condução
+Título de residência
+Número de Identificação Fiscal (folha)
+Cartão de Número de Identificação Fiscal
+Segurança Social (folha)
+Cartão de Segurança Social
+Utente do SNS (folha)
+Cartão de Utente do SNS
