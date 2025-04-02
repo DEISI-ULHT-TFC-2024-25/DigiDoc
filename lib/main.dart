@@ -420,7 +420,7 @@ class _PickDocumentPhotoScreenState extends State<PickDocumentPhotoScreen> {
   List<XFile> _capturedImages = [];
   bool _isCameraInitialized = false;
   XFile? _imgJustCaptured;
-  File? _imgJustProcessed;
+
 
   @override
   void initState() {
