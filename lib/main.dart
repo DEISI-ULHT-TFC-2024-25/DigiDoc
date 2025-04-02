@@ -97,7 +97,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget dossiersScreen() { //TODO
+  Widget dossiersScreen() {
     return DossiersScreen();
   }
 }
@@ -735,7 +735,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
   }
   int parseTwoDigitYear(String twoDigits) {
     final currentYear = DateTime.now().year;
-    final century = (currentYear ~/ 100) * 100; // Século atual (ex: 2000)
+    final century = (currentYear ~/ 100) * 100;
     return century + int.parse(twoDigits);
   }
 
@@ -899,12 +899,11 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                // Exibir todas as imagens capturadas
                 for (int i = 0; i < widget.capturedImages.length; i++) ...[
                   Image.file(
                     File(widget.capturedImages[i].path),
                     fit: BoxFit.cover,
-                    height: 200, // Ajuste conforme necessário
+                    height: 200,
                   ),
                   const SizedBox(height: 20),
                   Row(
