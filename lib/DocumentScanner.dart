@@ -4,11 +4,14 @@ import 'dart:ui' as ui;
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as imge;
 
+import 'ExtractedTextBox.dart';
+
 class DocumentScanner {
   final TextRecognizer _textRecognizer = TextRecognizer();
   final File _imageFile;
   RecognizedText? _recognizedText;
   List<TextBlock> textGroup = [];
+
 
   DocumentScanner._(this._imageFile);
 
@@ -33,12 +36,45 @@ class DocumentScanner {
     _processImage();
   }
 
-  /// Retorna as coordenadas [xTopLeft, yTopLeft, xBottomRight, yBottomRight] do texto especificado
-  Future getTextCoordinatesAtImage(String text) async {
-    print("PRINTOOOOOU");
-    if (_recognizedText == null) return null;
-    print("PRINTOOOOOU2222");
+  Future<String> extractTextAndNormalise() async {
+    String normalisedTextBox;
 
+    ExtractedTextBox etb = ExtractedTextBox(_imageFile.path);
+    await etb.extractText();
+
+    normalisedTextBox = etb.text;
+    normalisedTextBox = _normalizeText(normalisedTextBox);
+
+    return normalisedTextBox;
+  }
+
+  String _normalizeText(String text) {
+    String normalized = text
+        .toLowerCase()
+        .replaceAll(RegExp(r'[áàâãäåǎȁȃ]'), 'a')
+        .replaceAll(RegExp(r'[éèêẽëėęěȩ]'), 'e')
+        .replaceAll(RegExp(r'[íìîĩïıĩīĭ]'), 'i')
+        .replaceAll(RegExp(r'[óòôõöȯȱőǒºøǿ]'), 'o')
+        .replaceAll(RegExp(r'[úùûũüůűųȕȗ]'), 'u')
+        .replaceAll(RegExp(r'[çćĉċč]'), 'c')
+        .replaceAll(RegExp(r'[ñńňņṅṇṉǹ]'), 'n')
+        .replaceAll(RegExp(r'[ḧĥħḩḥ]'), 'h')
+        .replaceAll(RegExp(r'[ĵǰǰ]'), 'j')
+        .replaceAll(RegExp(r'[ķĺľļŗ]'), 'l')
+        .replaceAll(RegExp(r'[ḿṅṇ]'), 'm')
+        .replaceAll(RegExp(r'[ṕp̌ḧ]'), 'p')
+        .replaceAll(RegExp(r'[śšṡṧẛ]'), 's')
+        .replaceAll(RegExp(r'[ťţṫṯ]'), 't')
+        .replaceAll(RegExp(r'[ẃẇẅẉŵ]'), 'w')
+        .replaceAll(RegExp(r'[x̌x̱ẋ]'), 'x')
+        .replaceAll(RegExp(r'[ýŷỳỹẏ]'), 'y')
+        .replaceAll(RegExp(r'[żźžẑ]'), 'z');
+
+    return normalized;
+  }
+
+  Future getTextCoordinatesAtImage(String text) async {
+    if (_recognizedText == null) return null;
     for (TextBlock block in _recognizedText!.blocks) {
       if (block.text.toLowerCase().contains(text.toLowerCase())) {
         final points = block.cornerPoints;
@@ -52,7 +88,6 @@ class DocumentScanner {
     return null;
   }
 
-  /// Retorna a imagem recortada com base nas coordenadas fornecidas
   Future getCroppedImageByCoordinates(List<int> coordinates) async {
     if (coordinates.length != 4) return null;
 
@@ -86,7 +121,6 @@ class DocumentScanner {
     }
   }
 
-  /// Retorna o ângulo mais frequente dos textos e popula textGroup
   Future getMostFreqAngle() async{
     if (_recognizedText == null || _recognizedText!.blocks.isEmpty) return null;
 
@@ -126,7 +160,6 @@ class DocumentScanner {
     return mostFreqAngle;
   }
 
-  /// Retorna as coordenadas da diagonal negativa da área que contém todos os textos em textGroup
   Future getTextAreaCoordinates() async {
     print("pointes0");
 

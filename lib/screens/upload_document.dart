@@ -21,6 +21,29 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
   final ImagePicker _picker = ImagePicker();
   bool _isProcessing = false;
 
+  Future<File> _processDocument(File imageFile) async {
+    try {
+      final imge.Image? image = imge.decodeImage(await imageFile.readAsBytes());
+      if (image == null) throw Exception("Falha ao decodificar a imagem");
+
+      final DocDetector detector = DocDetector(image: image);
+      detector.catchDocument(
+        image: image,
+        width: image.width,
+        height: image.height,
+      );
+
+      final imge.Image? processedImage = detector.imageResult;
+      if (processedImage == null) throw Exception("Nenhum documento detectado");
+
+      final String tempPath =
+          '${(await getTemporaryDirectory()).path}/processed_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      return await File(tempPath).writeAsBytes(imge.encodeJpg(processedImage));
+    } catch (e) {
+      print("Erro no processamento: $e");
+      rethrow;
+    }
+  }
 
   Future<void> _pickImage() async {
     try {
@@ -56,30 +79,6 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
           duration: Duration(seconds: 3),
         ),
       );
-    }
-  }
-
-  Future<File> _processDocument(File imageFile) async {
-    try {
-      final imge.Image? image = imge.decodeImage(await imageFile.readAsBytes());
-      if (image == null) throw Exception("Falha ao decodificar a imagem");
-
-      final DocDetector detector = DocDetector(image: image);
-      detector.catchDocument(
-        image: image,
-        width: image.width,
-        height: image.height,
-      );
-
-      final imge.Image? processedImage = detector.imageResult;
-      if (processedImage == null) throw Exception("Nenhum documento detectado");
-
-      final String tempPath =
-          '${(await getTemporaryDirectory()).path}/processed_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      return await File(tempPath).writeAsBytes(imge.encodeJpg(processedImage));
-    } catch (e) {
-      print("Erro no processamento: $e");
-      rethrow;
     }
   }
 
@@ -185,7 +184,6 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
 
       final newEntry = '$docTypeName:$entryParts';
 
-      // Usa path_provider para obter um diretório onde possas escrever
       final directory = await getApplicationDocumentsDirectory();
       final filePath = '${directory.path}/docs_texts_map.txt';
       final file = File(filePath);

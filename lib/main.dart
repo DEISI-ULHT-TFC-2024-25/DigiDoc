@@ -1,15 +1,4 @@
-import 'dart:io';
-import 'dart:typed_data';
-import 'package:digidoc/DocumentScanner.dart';
-import 'package:digidoc/ExtractedTextBox.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'DataBaseHelper.dart';
-import 'package:camera/camera.dart';
-import 'dart:math' as math;
-import 'DocDetector.dart';
 import 'screens/dossiers.dart';
 
 class AppColors {
@@ -43,12 +32,8 @@ class MyHomePage extends StatefulWidget {
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
-
-//____________
-
 class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 1;
-  String imgPath = '';
 
   @override
   Widget build(BuildContext context) {

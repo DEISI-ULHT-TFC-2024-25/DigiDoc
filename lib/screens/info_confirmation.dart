@@ -200,10 +200,10 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
   void initState() {
     super.initState();
     _processImages();
-    _initScanner();
+    _initDocumentScanner();
   }
 
-  Future<void> _initScanner() async {
+  Future<void> _initDocumentScanner() async {
     XFile image = widget.imagesList[0];
     inferredDocTypeName = await _inferDocTypeName(image);
     ds = await DocumentScanner.create(File(image.path));
@@ -220,10 +220,8 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
 
   Future<void> _processImages() async {
     for (var image in widget.imagesList) {
-      ExtractedTextBox etb = ExtractedTextBox(image.path);
-      await etb.extractText();
 
-      String extractedText = etb.text;
+      String extractedText = await DocumentScanner(File(image.path)).extractTextAndNormalise();
       List<DateTime>? futuresDate = extractFutureDate(extractedText);
       String extractedAlert = "";
       if (futuresDate != null) {
@@ -303,78 +301,6 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
     }
 
     return dates;
-  }
-
-  String _normalizeText(String text) {
-    String normalized = text
-        .toLowerCase()
-        .replaceAll(RegExp(r'[áàâãäåǎȁȃ]'), 'a')
-        .replaceAll(RegExp(r'[éèêẽëėęěȩ]'), 'e')
-        .replaceAll(RegExp(r'[íìîĩïıĩīĭ]'), 'i')
-        .replaceAll(RegExp(r'[óòôõöȯȱőǒºøǿ]'), 'o')
-        .replaceAll(RegExp(r'[úùûũüůűųȕȗ]'), 'u')
-        .replaceAll(RegExp(r'[çćĉċč]'), 'c')
-        .replaceAll(RegExp(r'[ñńňņṅṇṉǹ]'), 'n')
-        .replaceAll(RegExp(r'[ḧĥħḩḥ]'), 'h')
-        .replaceAll(RegExp(r'[ĵǰǰ]'), 'j')
-        .replaceAll(RegExp(r'[ķĺľļŗ]'), 'l')
-        .replaceAll(RegExp(r'[ḿṅṇ]'), 'm')
-        .replaceAll(RegExp(r'[ṕp̌ḧ]'), 'p')
-        .replaceAll(RegExp(r'[śšṡṧẛ]'), 's')
-        .replaceAll(RegExp(r'[ťţṫṯ]'), 't')
-        .replaceAll(RegExp(r'[ẃẇẅẉŵ]'), 'w')
-        .replaceAll(RegExp(r'[x̌x̱ẋ]'), 'x')
-        .replaceAll(RegExp(r'[ýŷỳỹẏ]'), 'y')
-        .replaceAll(RegExp(r'[żźžẑ]'), 'z')
-        .replaceAll(RegExp(r'[\r]'), ' ')
-        .replaceAll(RegExp(r'[\n]'), ' ')
-        .replaceAll(RegExp(r'[\t]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ');
-
-    return normalized;
-  }
-
-  String guessDocType(List<String> texts) {
-    String combinedText = texts.map(_normalizeText).join(" ");
-
-    Map<String, List<String>> documents = {
-      "Cartão de Cidadão": [
-        "citzen",
-        "card",
-        "cartao",
-        "cidadao",
-        "identity",
-        "prt"
-      ],
-      "Título de Residência": [
-        "titulo",
-        "residencia",
-        "prt",
-        "resid",
-        "autoriz",
-        "residence",
-        "permit"
-      ],
-      "Carta de Condução": ["carta", "conducao", "imt", "b1", "b"]
-    };
-
-    String bestMatch = "Documento não identificado";
-    int bestScore = 0;
-
-    for (var entry in documents.entries) {
-      int score = 0;
-      for (String keyword in entry.value) {
-        if (combinedText.contains(keyword)) {
-          score++;
-        }
-      }
-      if (score > bestScore) {
-        bestScore = score;
-        bestMatch = entry.key;
-      }
-    }
-
-    return bestMatch;
   }
 
   Future<XFile?> rotateXFileImage(XFile xfile, double angleDegrees) async {
