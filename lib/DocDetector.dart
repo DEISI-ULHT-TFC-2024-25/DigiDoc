@@ -2,28 +2,20 @@ import 'dart:math' as math;
 import 'package:image/image.dart' as imag;
 
 class DocDetector {
-  static imag.Image? imageResult;
-  static List<List<double>>? imageCorners;
+  imag.Image? imageResult;
+  List<List<double>>? imageCorners;
 
   DocDetector({required imag.Image image})
   {
     imageResult = image;
   }
 
-  static imag.Image applySobelFilter({required imag.Image image})
-  {
-    imag.Image gray = imag.grayscale(image);
-    imag.Image blurred = imag.gaussianBlur(gray, radius: 5);
-    imag.Image sobelImage = imag.sobel(blurred);
-    return sobelImage;
-  }
-
-  static imag.Image rotateImage({required imag.Image image, required double angleDegrees})
+  imag.Image rotateImage({required imag.Image image, required double angleDegrees})
   {
     return imag.copyRotate(image, angle: angleDegrees);
   }
 
-  static imag.Image cropImage({required imag.Image image, required List<List<double>> dstPoints})
+  imag.Image cropImage({required imag.Image image, required List<List<double>> dstPoints})
   {
     double minX = dstPoints[0][0], minY = dstPoints[0][1], maxX = dstPoints[0][0], maxY = dstPoints[0][1];
 
@@ -36,13 +28,24 @@ class DocDetector {
 
     int cropX = math.max(0, minX.round());
     int cropY = math.max(0, minY.round());
-    int cropWidth = math.min(image.width - cropX, (maxX - minX).round());
-    int cropHeight = math.min(image.height - cropY, (maxY - minY).round());
+    int cropWidth = (maxX - minX).round();
+    int cropHeight = (maxY - minY).round();
 
-    return imag.copyCrop(image, x: cropX, y: cropY, width: cropWidth, height: cropHeight);
+    cropWidth = math.max(1, math.min(image.width - cropX, cropWidth));
+    cropHeight = math.max(1, math.min(image.height - cropY, cropHeight));
+
+    print("Crop params: x=$cropX, y=$cropY, width=$cropWidth, height=$cropHeight");
+
+    return imag.copyCrop(
+      image,
+      x: cropX,
+      y: cropY,
+      width: cropWidth,
+      height: cropHeight,
+    );
   }
 
-  static imag.Image correctPerspective({
+  imag.Image correctPerspective({
     required imag.Image image,
     required List<List<double>> srcPoints,
     required List<List<double>> dstPoints,
@@ -69,7 +72,7 @@ class DocDetector {
     return output;
   }
 
-  static List<List<double>> computePerspectiveTransform({
+  List<List<double>> computePerspectiveTransform({
     required List<List<double>> srcPoints,
     required List<List<double>> dstPoints,
   })
@@ -96,7 +99,7 @@ class DocDetector {
     ];
   }
 
-  static List<double> applyPerspectiveTransform({required List<List<double>> H, required double x, required double y,})
+  List<double> applyPerspectiveTransform({required List<List<double>> H, required double x, required double y,})
   {
     double w = H[2][0] * x + H[2][1] * y + H[2][2];
     double newX = (H[0][0] * x + H[0][1] * y + H[0][2]) / w;
@@ -104,7 +107,7 @@ class DocDetector {
     return [newX, newY];
   }
 
-  static List<double> solveLinearSystem({required List<List<double>> A, required List<double> B,})
+  List<double> solveLinearSystem({required List<List<double>> A, required List<double> B,})
   {
     int n = B.length;
     List<double> x = List<double>.filled(n, 0);
@@ -145,7 +148,7 @@ class DocDetector {
     return x;
   }
 
-  static List<double> lineFromPointAngle({required int x0, required int y0, required double angle,})
+  List<double> lineFromPointAngle({required int x0, required int y0, required double angle,})
   {
     double rad = angle * math.pi / 180;
     double m = math.tan(rad);
@@ -153,7 +156,7 @@ class DocDetector {
     return [m, b];
   }
 
-  static List<double> intersection({required List<double> line1, required List<double> line2,})
+  List<double> intersection({required List<double> line1, required List<double> line2,})
   {
     double m1 = line1[0], b1 = line1[1], m2 = line2[0], b2 = line2[1];
     int x = ((b2 - b1) / (m1 - m2)).round();
@@ -161,7 +164,7 @@ class DocDetector {
     return [x.toDouble(), y.toDouble()];
   }
 
-  static List<List<double>> findCorners({
+  List<List<double>> findCorners({
     required double angleTop,
     required double angleBottom,
     required double angleLeft,
@@ -174,8 +177,15 @@ class DocDetector {
     required int leftY,
     required int rightX,
     required int rightY,
+    required int originalWidth,
+    required int originalHeight,
+    required int binWidth,
+    required int binHeight,
   })
   {
+    double scaleX = originalWidth / binWidth;
+    double scaleY = originalHeight / binHeight;
+
     List<double> topLine = lineFromPointAngle(x0: topX, y0: topY, angle: angleTop);
     List<double> bottomLine = lineFromPointAngle(x0: bottomX, y0: bottomY, angle: angleBottom);
     List<double> leftLine = lineFromPointAngle(x0: leftX, y0: leftY, angle: angleLeft);
@@ -186,9 +196,16 @@ class DocDetector {
     List<double> bottomLeft = intersection(line1: bottomLine, line2: leftLine);
     List<double> bottomRight = intersection(line1: bottomLine, line2: rightLine);
 
-    return [topLeft, topRight, bottomRight, bottomLeft];
+    // Ajustar para a escala da imagem original e limitar aos bounds
+    return [
+      [math.max(0, math.min(originalWidth - 1, topLeft[0] * scaleX)), math.max(0, math.min(originalHeight - 1, topLeft[1] * scaleY))],
+      [math.max(0, math.min(originalWidth - 1, topRight[0] * scaleX)), math.max(0, math.min(originalHeight - 1, topRight[1] * scaleY))],
+      [math.max(0, math.min(originalWidth - 1, bottomRight[0] * scaleX)), math.max(0, math.min(originalHeight - 1, bottomRight[1] * scaleY))],
+      [math.max(0, math.min(originalWidth - 1, bottomLeft[0] * scaleX)), math.max(0, math.min(originalHeight - 1, bottomLeft[1] * scaleY))],
+    ];
   }
-  static List<List<double>> getCorrectedCornersPerspective({
+
+  List<List<double>> getCorrectedCornersPerspective({
     required List<List<double>> srcPoints,
   })
   {
@@ -218,30 +235,40 @@ class DocDetector {
     ];
   }
 
-  static void catchDocument({ required imag.Image image, required int width, required int height,})
+  void catchDocument({required imag.Image image,required int width,required int height,})
   {
-    imag.Image imageBin = applySobelFilter(image: image);
+    imag.Image imageBin = imag.copyResize(image, width: 800);
+    imageBin = imag.grayscale(imageBin);
+    imageBin = imag.gaussianBlur(imageBin, radius: 5);
+    imageBin = imag.sobel(imageBin);
+    imageBin = binarizeImage(image: imageBin);
 
-    List<List<int>> edges = List.generate(4, (_) => [0, 0]);
+    int imageBinWidth = imageBin.width;
+    int imageBinHeight = imageBin.height;
+
+    int imageBinWidthEnd = imageBinWidth - 1;
+    int imageBinHeightEnd = imageBinHeight - 1;
+
+    List<List<int>> edges = List.generate(4, (_) => [0, 0]);  // [top, bottom, left, right]
 
     double? angleTop;
     double? angleBottom;
     double? angleLeft;
     double? angleRight;
 
-    int middleImgX = width ~/ 2;
-    int middleImgY = height ~/ 2;
+    int imageBinMiddleHeight = imageBinHeight ~/ 2;
+    int imageBinMiddleWidth = imageBinWidth ~/ 2;
 
     int margin = (width * 0.1333).round();
-    List<int> gapIterX = [middleImgX - margin, middleImgX + margin];
-    List<int> gapIterY = [middleImgY - margin, middleImgY + margin];
+    List<int> gapIterX = [imageBinMiddleWidth - margin, imageBinMiddleWidth + margin];
+    List<int> gapIterY = [imageBinMiddleHeight - margin, imageBinMiddleHeight + margin];
 
     int xPoint = -1;
     int yPoint = -1;
 
     double ts = 3;
 
-    for (int y = 0; y < height ~/ 2; y++) {
+    for (int y = 0; y < imageBinMiddleHeight; y++) {
       int whiteCount = 0;
       for (int x = gapIterX[0]; x < gapIterX[1]; x++) {
         if (imageBin.getPixel(x, y).r == 255 &&
@@ -252,7 +279,7 @@ class DocDetector {
         }
       }
       if (whiteCount > ts) {
-        edges[0][0] = xPoint == -1 ? middleImgX : xPoint;
+        edges[0][0] = xPoint == -1 ? imageBinMiddleWidth : xPoint;
         edges[0][1] = y;
         angleTop = verifyLineAngle(
           image: imageBin,
@@ -276,7 +303,7 @@ class DocDetector {
     }
 
     xPoint = -1;
-    for (int y = height - 1; y > height ~/ 2; y--) {
+    for (int y = imageBinHeightEnd; y > imageBinMiddleHeight; y--) {
       int whiteCount = 0;
       for (int x = gapIterX[0]; x < gapIterX[1]; x++) {
         if (imageBin.getPixel(x, y).r == 255 &&
@@ -287,7 +314,7 @@ class DocDetector {
         }
       }
       if (whiteCount > ts) {
-        edges[1][0] = xPoint == -1 ? middleImgX : xPoint;
+        edges[1][0] = xPoint == -1 ? imageBinMiddleWidth : xPoint;
         edges[1][1] = y;
         angleBottom = verifyLineAngle(
           image: imageBin,
@@ -302,7 +329,7 @@ class DocDetector {
       }
     }
 
-    for (int x = 0; x < width ~/ 2; x++) {
+    for (int x = 0; x < imageBinMiddleWidth; x++) {
       int whiteCount = 0;
       for (int y = gapIterY[0]; y < gapIterY[1]; y++) {
         if (imageBin.getPixel(x, y).r == 255 &&
@@ -314,7 +341,7 @@ class DocDetector {
       }
       if (whiteCount > ts) {
         edges[2][0] = x;
-        edges[2][1] = yPoint == -1 ? middleImgY : yPoint;
+        edges[2][1] = yPoint == -1 ? imageBinMiddleHeight : yPoint;
         angleLeft = verifyLineAngle(
           image: imageBin,
           startX: edges[2][0],
@@ -329,7 +356,7 @@ class DocDetector {
     }
 
     yPoint = -1;
-    for (int x = width - 1; x > width ~/ 2; x--) {
+    for (int x = imageBinWidthEnd; x > imageBinMiddleWidth; x--) {
       int whiteCount = 0;
       for (int y = gapIterY[0]; y < gapIterY[1]; y++) {
         if (imageBin.getPixel(x, y).r == 255 &&
@@ -341,7 +368,7 @@ class DocDetector {
       }
       if (whiteCount > ts) {
         edges[3][0] = x;
-        edges[3][1] = yPoint == -1 ? middleImgY : yPoint;
+        edges[3][1] = yPoint == -1 ? imageBinMiddleHeight : yPoint;
         angleRight = verifyLineAngle(
           image: imageBin,
           startX: edges[3][0],
@@ -369,9 +396,17 @@ class DocDetector {
         leftY: edges[2][1],
         rightX: edges[3][0],
         rightY: edges[3][1],
+        originalWidth: width,
+        originalHeight: height,
+        binWidth: imageBinWidth,
+        binHeight: imageBinHeight,
       );
       imageCorners = corners;
+      print("Corners: $corners");
+
       List<List<double>> dstPoints = getCorrectedCornersPerspective(srcPoints: corners);
+      print("DstPoints: $dstPoints");
+
       image = correctPerspective(
         image: image,
         srcPoints: dstPoints,
@@ -380,10 +415,39 @@ class DocDetector {
         height: height,
       );
       imageResult = cropImage(image: image, dstPoints: dstPoints);
+      print("Image processed: ${imageResult!.width}x${imageResult!.height}");
+    } else {
+      print("Edge detection failed: top=$angleTop, bottom=$angleBottom, left=$angleLeft, right=$angleRight");
+      imageResult = imageBin;
     }
   }
 
-  static int countWhitePixels({
+  imag.Image binarizeImage({
+    required imag.Image image,
+    int threshold = 128,
+    bool invert = false,
+  })
+  {
+    final result = imag.copyResize(image);
+
+    for (int y = 0; y < result.height; y++) {
+      for (int x = 0; x < result.width; x++) {
+        final pixel = result.getPixel(x, y);
+
+        final luminance = (0.299 * pixel.r + 0.587 * pixel.g + 0.114 * pixel.b).toInt();
+
+        final newValue = luminance > threshold ? 255 : 0;
+
+        final finalValue = invert ? 255 - newValue : newValue;
+
+        result.setPixelRgb(x, y, finalValue, finalValue, finalValue);
+      }
+    }
+
+    return result;
+  }
+
+  int countWhitePixels({
     required imag.Image image,
     required int startX,
     required int startY,
@@ -436,7 +500,8 @@ class DocDetector {
     while (true) {
       if (x >= 0 && x < width && y >= 0 && y < height) {
         imag.Color pixel = image.getPixel(x, y);
-        if (pixel.r == 255 && pixel.g == 255 && pixel.b == 255) {
+        // Ajuste: considerar pixels com alta intensidade como "brancos"
+        if (pixel.r > 200 && pixel.g > 200 && pixel.b > 200) {
           count++;
         }
       }
@@ -459,7 +524,7 @@ class DocDetector {
     return count;
   }
 
-  static List<int> clipToBounds({
+  List<int> clipToBounds({
     required int startX,
     required int startY,
     required int x,
@@ -487,7 +552,7 @@ class DocDetector {
     return [x, y];
   }
 
-  static double? verifyLineAngle({
+  double? verifyLineAngle({
     required imag.Image image,
     required int startX,
     required int startY,
