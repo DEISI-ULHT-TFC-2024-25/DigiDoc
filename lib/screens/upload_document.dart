@@ -1,13 +1,6 @@
 import 'dart:io';
-
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'package:image/image.dart' as imge;
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-
-import '../DocDetector.dart';
 import 'info_confirmation.dart';
 
 class UploadDocumentScreen extends StatefulWidget {
@@ -20,30 +13,6 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
   List<File> _uploadedDocuments = [];
   final ImagePicker _picker = ImagePicker();
   bool _isProcessing = false;
-
-  Future<File> _processDocument(File imageFile) async {
-    try {
-      final imge.Image? image = imge.decodeImage(await imageFile.readAsBytes());
-      if (image == null) throw Exception("Falha ao decodificar a imagem");
-
-      final DocDetector detector = DocDetector(image: image);
-      detector.catchDocument(
-        image: image,
-        width: image.width,
-        height: image.height,
-      );
-
-      final imge.Image? processedImage = detector.imageResult;
-      if (processedImage == null) throw Exception("Nenhum documento detectado");
-
-      final String tempPath =
-          '${(await getTemporaryDirectory()).path}/processed_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      return await File(tempPath).writeAsBytes(imge.encodeJpg(processedImage));
-    } catch (e) {
-      print("Erro no processamento: $e");
-      rethrow;
-    }
-  }
 
   Future<void> _pickImage() async {
     try {
@@ -58,14 +27,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
         setState(() => _isProcessing = true);
 
         final imageFile = File(image.path);
-
-        //final processedImage = await _processDocument(imageFile);
-
-        /*await processDocumentAndSaveTextMap(
-            docTypeName: "TR-PT",
-            imageFile: image,
-            textsToFind: ["titulo", "nomes", "apelidos", "residencia", "residence", "prt", "autoriz", "permit", "resid"]);*/
-
+        
         setState(() {
           _selectedImage = imageFile;
           _isProcessing = false;
@@ -95,123 +57,6 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
     setState(() {
       _uploadedDocuments.removeAt(index);
     });
-  }
-
-  String _normalizeText(String text) {
-    String normalized = text
-        .toLowerCase()
-        .replaceAll(RegExp(r'[áàâãäåǎȁȃ]'), 'a')
-        .replaceAll(RegExp(r'[éèêẽëėęěȩ]'), 'e')
-        .replaceAll(RegExp(r'[íìîĩïıĩīĭ]'), 'i')
-        .replaceAll(RegExp(r'[óòôõöȯȱőǒºøǿ]'), 'o')
-        .replaceAll(RegExp(r'[úùûũüůűųȕȗ]'), 'u')
-        .replaceAll(RegExp(r'[çćĉċč]'), 'c')
-        .replaceAll(RegExp(r'[ñńňņṅṇṉǹ]'), 'n')
-        .replaceAll(RegExp(r'[ḧĥħḩḥ]'), 'h')
-        .replaceAll(RegExp(r'[ĵǰǰ]'), 'j')
-        .replaceAll(RegExp(r'[ķĺľļŗ]'), 'l')
-        .replaceAll(RegExp(r'[ḿṅṇ]'), 'm')
-        .replaceAll(RegExp(r'[ṕp̌ḧ]'), 'p')
-        .replaceAll(RegExp(r'[śšṡṧẛ]'), 's')
-        .replaceAll(RegExp(r'[ťţṫṯ]'), 't')
-        .replaceAll(RegExp(r'[ẃẇẅẉŵ]'), 'w')
-        .replaceAll(RegExp(r'[x̌x̱ẋ]'), 'x')
-        .replaceAll(RegExp(r'[ýŷỳỹẏ]'), 'y')
-        .replaceAll(RegExp(r'[żźžẑ]'), 'z')
-        .replaceAll(RegExp(r'[\r]'), ' ')
-        .replaceAll(RegExp(r'[\n]'), ' ')
-        .replaceAll(RegExp(r'[\t]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ');
-
-    return normalized;
-  }
-
-  Future<void> processDocumentAndSaveTextMap({
-    required String docTypeName,
-    required XFile imageFile,
-    required List<String> textsToFind,
-  })
-  async {
-    final textRecognizer = TextRecognizer();
-    try {
-      final inputImage = InputImage.fromFilePath(imageFile.path);
-      final recognizedText = await textRecognizer.processImage(inputImage);
-
-      final imageBytes = await imageFile.readAsBytes();
-      final image = imge.decodeImage(imageBytes)!;
-      final imageWidth = image.width;
-      final imageHeight = image.height;
-
-      final textCoordinatesMap = <String, List<double>>{};
-
-      for (final text in textsToFind) {
-        for (final block in recognizedText.blocks) {
-          for (final line in block.lines) {
-            String lineText = _normalizeText(line.text);
-            if (lineText.contains(text)) {
-              final corners = line.cornerPoints;
-              if (corners.length >= 2) {
-                double xMin = corners[0].x.toDouble();
-                double yMin = corners[0].y.toDouble();
-                double xMax = corners[0].x.toDouble();
-                double yMax = corners[0].y.toDouble();
-
-                for (final point in corners) {
-                  xMin = xMin < point.x ? xMin : point.x.toDouble();
-                  yMin = yMin < point.y ? yMin : point.y.toDouble();
-                  xMax = xMax > point.x ? xMax : point.x.toDouble();
-                  yMax = yMax > point.y ? yMax : point.y.toDouble();
-                }
-
-                final normalizedCoords = [
-                  xMin / imageWidth,
-                  yMin / imageHeight,
-                  xMax / imageWidth,
-                  yMax / imageHeight,
-                ];
-
-                textCoordinatesMap[text] = normalizedCoords;
-                break;
-              }
-            }
-          }
-        }
-      }
-
-      final entryParts = textCoordinatesMap.entries
-          .map((e) => '${e.key}-${e.value.join(",")}')
-          .join(';');
-
-      final newEntry = '$docTypeName:$entryParts';
-
-      final directory = await getApplicationDocumentsDirectory();
-      final filePath = '${directory.path}/docs_texts_map.txt';
-      final file = File(filePath);
-
-      List<String> existingLines = [];
-      if (await file.exists()) {
-        existingLines = await file.readAsLines();
-      }
-
-      bool found = false;
-      final updatedLines = existingLines.map((line) {
-        if (line.startsWith('$docTypeName:')) {
-          found = true;
-          return '$line|$entryParts';
-        }
-        return line;
-      }).toList();
-
-      if (!found) {
-        updatedLines.add(newEntry);
-      }
-
-      await file.writeAsString(updatedLines.join('\n'));
-    } catch (e) {
-      print('Erro ao processar a imagem e salvar as coordenadas: $e');
-    } finally {
-      textRecognizer.close();
-    }
   }
 
   @override

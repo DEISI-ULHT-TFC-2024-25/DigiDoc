@@ -4,7 +4,6 @@ import 'dart:ui' as ui;
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as imge;
 
-import 'ExtractedTextBox.dart';
 
 class DocumentScanner {
   final TextRecognizer _textRecognizer = TextRecognizer();
@@ -14,6 +13,10 @@ class DocumentScanner {
 
 
   DocumentScanner._(this._imageFile);
+
+  DocumentScanner(this._imageFile) {
+    _processImage();
+  }
 
   static Future<DocumentScanner> create(File imageFile) async {
     final scanner = DocumentScanner._(imageFile);
@@ -32,17 +35,16 @@ class DocumentScanner {
     }
   }
 
-  DocumentScanner(this._imageFile) {
-    _processImage();
-  }
-
   Future<String> extractTextAndNormalise() async {
     String normalisedTextBox;
 
-    ExtractedTextBox etb = ExtractedTextBox(_imageFile.path);
-    await etb.extractText();
+    final inputImage = InputImage.fromFile(_imageFile);
+    final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
-    normalisedTextBox = etb.text;
+    final RecognizedText recognizedText = await textRecognizer.processImage(inputImage);
+    textRecognizer.close();
+
+    normalisedTextBox = recognizedText.text;
     normalisedTextBox = _normalizeText(normalisedTextBox);
 
     return normalisedTextBox;
@@ -161,15 +163,11 @@ class DocumentScanner {
   }
 
   Future getTextAreaCoordinates() async {
-    print("pointes0");
 
     if (_recognizedText == null || _recognizedText!.blocks.isEmpty) return null;
 
-    print("pointes1");
-
     List<ui.Offset> points = [];
     for (TextBlock block in _recognizedText!.blocks) {
-      print("pointes: ${block.text}");
       points.addAll(block.cornerPoints.map((p) => ui.Offset(p.x.toDouble(), p.y.toDouble())));
     }
 

@@ -7,12 +7,11 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image/image.dart' as imge;
 import 'package:path_provider/path_provider.dart';
 import '../DocumentScanner.dart';
-import '../ExtractedTextBox.dart';
 
 class InfoConfirmationScreen extends StatefulWidget {
   final List<XFile> imagesList;
 
-  InfoConfirmationScreen({required this.imagesList});
+  const InfoConfirmationScreen({required this.imagesList, super.key});
 
   @override
   _InfoConfirmationScreenState createState() => _InfoConfirmationScreenState();
@@ -24,10 +23,37 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
   String text = "carta";
   List<int>? coords = [];
   double? angle;
-  late DocumentScanner ds;
-  String inferredDocTypeName = 'Tipo nao detetado';
+  DocumentScanner? ds; // Alterado para nullable
+  String inferredDocTypeName = 'Tipo não detectado';
+  bool _isLoading = true;
 
-  Future<String> _inferDocTypeName(XFile x_file_img) async {
+  @override
+  void initState() {
+    super.initState();
+    _initialize();
+  }
+
+  Future<void> _initialize() async {
+    await _processImages();
+    await _initDocumentScanner();
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _initDocumentScanner() async {
+    if (widget.imagesList.isNotEmpty) {
+      XFile image = widget.imagesList[0];
+      inferredDocTypeName = await _inferDocTypeName(image);
+      ds = await DocumentScanner.create(File(image.path));
+      coords = await ds!.getTextAreaCoordinates();
+      angle = await ds!.getMostFreqAngle();
+    }
+  }
+
+  Future<String> _inferDocTypeName(XFile xFileImg) async {
     final directory = await getApplicationDocumentsDirectory();
     final filePath = '${directory.path}/docs_texts_map.txt';
     final file = File(filePath);
@@ -38,17 +64,17 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
     }
 
     final textRecognizer = TextRecognizer();
-    final inputImage = InputImage.fromFilePath(x_file_img.path);
+    final inputImage = InputImage.fromFilePath(xFileImg.path);
     final recognizedText = await textRecognizer.processImage(inputImage);
+    textRecognizer.close();
 
-    final imageBytes = await x_file_img.readAsBytes();
+    final imageBytes = await xFileImg.readAsBytes();
     final image = imge.decodeImage(imageBytes)!;
     final imageWidth = image.width;
     final imageHeight = image.height;
 
     final docTypesScore = <String, double>{};
 
-    // Processar as linhas do arquivo de mapeamento
     for (var line in existingLines) {
       String docTypeName = line.split(":")[0];
       List<String> wordsAndCoords = line.split(":")[1].split("|");
@@ -59,25 +85,18 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
           String docText = parts[0];
           List<double> coords = parts[1].split(",").map(double.parse).toList();
 
-          double xTopLeft = coords[0];
-          double yTopLeft = coords[1];
-          double xBottomRight = coords[2];
-          double yBottomRight = coords[3];
+          double xTopLeft = coords[0] * imageWidth;
+          double yTopLeft = coords[1] * imageHeight;
+          double xBottomRight = coords[2] * imageWidth;
+          double yBottomRight = coords[3] * imageHeight;
 
-          // Convertendo as coordenadas normalizadas para coordenadas absolutas na imagem
-          double xTopLeftAbs = xTopLeft * imageWidth;
-          double yTopLeftAbs = yTopLeft * imageHeight;
-          double xBottomRightAbs = xBottomRight * imageWidth;
-          double yBottomRightAbs = yBottomRight * imageHeight;
-
-          // Verifica a interseção e calcula o score
           double score = _getTextIntersectionScore(
             recognizedText,
             docText,
-            xTopLeftAbs,
-            yTopLeftAbs,
-            xBottomRightAbs,
-            yBottomRightAbs,
+            xTopLeft,
+            yTopLeft,
+            xBottomRight,
+            yBottomRight,
           );
 
           if (score > 0) {
@@ -90,13 +109,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
 
     String inferredDocText = 'Nome não detectado';
     double maxScore = 0;
-
-    print("GANHEIIIIIIIII");
-    if (docTypesScore.isEmpty) {
-      print("EMPTY");
-    }
     docTypesScore.forEach((key, value) {
-      print("key: $key value: $value");
       if (value > maxScore) {
         maxScore = value;
         inferredDocText = key;
@@ -108,15 +121,13 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
 
   double _getTextIntersectionScore(
       RecognizedText recognizedText,
-      String paramText,
+      String targetText,
       double xTopLeftAbs,
       double yTopLeftAbs,
       double xBottomRightAbs,
       double yBottomRightAbs,
-      )
-  {
-    // Retângulo da área fornecida como parâmetro
-    final paramRect = math.Rectangle<double>(
+      ) {
+    final targetRect = math.Rectangle<double>(
       xTopLeftAbs,
       yTopLeftAbs,
       xBottomRightAbs - xTopLeftAbs,
@@ -124,9 +135,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
     );
 
     double bestScore = 0;
-    math.Rectangle<double>? bestRect;
 
-    // Itera sobre os retângulos de texto reconhecidos
     for (var block in recognizedText.blocks) {
       for (var line in block.lines) {
         for (var element in line.elements) {
@@ -139,33 +148,22 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
               boundingBox.height,
             );
 
-            // Verifica se há interseção
-            if (paramRect.intersects(textRect)) {
-              // Calcula a área de interseção
-              final intersection = paramRect.intersection(textRect);
+            if (targetRect.intersects(textRect)) {
+              final intersection = targetRect.intersection(textRect);
               if (intersection != null) {
                 double intersectionArea = intersection.width * intersection.height;
                 double textRectArea = textRect.width * textRect.height;
                 double overlapRatio = intersectionArea / textRectArea;
 
-                // Só considera retângulos com interseção significativa
                 if (overlapRatio > 0) {
-                  if (overlapRatio > bestScore || (overlapRatio == bestScore && textRectArea < (bestRect?.width ?? double.infinity) * (bestRect?.height ?? double.infinity))) {
-                    bestScore = overlapRatio;
-                    bestRect = textRect;
+                  String recognizedTextLower = element.text.toLowerCase();
+                  String paramTextLower = targetText.toLowerCase();
 
-                    // Calcula o score de correspondência de texto
-                    String recognizedTextLower = element.text.toLowerCase();
-                    String paramTextLower = paramText.toLowerCase();
-
-                    if (recognizedTextLower.contains(paramTextLower)) {
-                      // Score 1 se o texto do parâmetro está completamente contido
-                      bestScore = 1.0;
-                    } else {
-                      // Calcula a maior subsequência comum (LCS - Longest Common Subsequence)
-                      int lcsLength = _longestCommonSubsequence(recognizedTextLower, paramTextLower);
-                      bestScore = lcsLength / paramTextLower.length;
-                    }
+                  if (recognizedTextLower.contains(paramTextLower)) {
+                    bestScore = math.max(bestScore, 1.0);
+                  } else {
+                    int lcsLength = _longestCommonSubsequence(recognizedTextLower, paramTextLower);
+                    bestScore = math.max(bestScore, lcsLength / paramTextLower.length);
                   }
                 }
               }
@@ -196,20 +194,26 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
     return dp[m][n];
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _processImages();
-    _initDocumentScanner();
-  }
+  Future<void> _processImages() async {
+    for (var image in widget.imagesList) {
+      String extractedText = await DocumentScanner(File(image.path)).extractTextAndNormalise();
+      List<DateTime>? futuresDate = extractFutureDate(extractedText);
+      String extractedAlert = "";
+      if (futuresDate != null && futuresDate.isNotEmpty) {
+        for (DateTime dt in futuresDate) {
+          extractedAlert += "${dt.day}/${dt.month}/${dt.year}\n";
+        }
+      } else {
+        extractedAlert = "Nenhuma data válida encontrada";
+      }
 
-  Future<void> _initDocumentScanner() async {
-    XFile image = widget.imagesList[0];
-    inferredDocTypeName = await _inferDocTypeName(image);
-    ds = await DocumentScanner.create(File(image.path));
-    coords = await ds.getTextAreaCoordinates();
-    angle = await ds.getMostFreqAngle();
-    setState(() {});
+      if (mounted) {
+        setState(() {
+          _extractedTextsList.add(extractedText);
+          _extractedAlertsList.add(extractedAlert);
+        });
+      }
+    }
   }
 
   int parseTwoDigitYear(String twoDigits) {
@@ -218,34 +222,12 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
     return century + int.parse(twoDigits);
   }
 
-  Future<void> _processImages() async {
-    for (var image in widget.imagesList) {
-
-      String extractedText = await DocumentScanner(File(image.path)).extractTextAndNormalise();
-      List<DateTime>? futuresDate = extractFutureDate(extractedText);
-      String extractedAlert = "";
-      if (futuresDate != null) {
-        for (DateTime dt in futuresDate) {
-          extractedAlert += "${dt.day}/${dt.month}/${dt.year}\n";
-        }
-      } else {
-        extractedAlert = "Nenhuma data válida encontrada";
-      }
-
-      setState(() {
-        _extractedTextsList.add(extractedText);
-        _extractedAlertsList.add(extractedAlert);
-      });
-    }
-  }
-
   List<DateTime>? extractFutureDate(String text) {
     List<String> patterns = [
       r'(\d{2})\s*(\d{2})\s*(\d{4})',
       r'(\d{2})\.(\d{2})\.(\d{4})',
       r'(\d{2})\-(\d{2})\-(\d{4})',
       r'(\d{2})\\(\d{2})\\(\d{4})',
-      r'(\d{2})\/(\d{2})\/(\d{4})',
       r'(\d{2})\/(\d{2})\/(\d{4})',
       r'(\d{2})\s*(\d{2})\s*(\d{2})',
       r'(\d{2})\.(\d{2})\.(\d{2})',
@@ -256,38 +238,28 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
       r'(\d{2})\.(\d{4})',
       r'(\d{2})\-(\d{4})',
       r'(\d{2})\\(\d{4})',
-      r'(\d{2})\s*(\d{2})',
-      r'(\d{2})\.(\d{2})',
-      r'(\d{2})\-(\d{2})',
-      r'(\d{2})\\(\d{2})',
+      r'(\d{2})\/(\d{4})',
     ];
-    DateTime hoje = DateTime.now();
-    hoje = hoje.subtract(Duration(days: 7));
-    DateTime limite = hoje.add(Duration(days: 36500));
-    RegExp regex = RegExp(patterns[0]);
-    Iterable<Match> matches = regex.allMatches(text);
+    DateTime hoje = DateTime.now().subtract(const Duration(days: 7));
+    DateTime limite = hoje.add(const Duration(days: 36500));
     List<DateTime> dates = [];
-    for (int i = 1; i < patterns.length; i++) {
-      regex = RegExp(patterns[i]);
-      matches = regex.allMatches(text);
 
-      DateTime? validDate;
-      int day, month, year = 0;
+    for (String pattern in patterns) {
+      RegExp regex = RegExp(pattern);
+      Iterable<Match> matches = regex.allMatches(text);
+
       for (var match in matches) {
+        int day, month, year;
         if (match.groupCount == 2) {
           day = 1;
           month = int.parse(match.group(1)!);
           final anoRaw = match.group(2)!;
-          year = anoRaw.length == 2
-              ? parseTwoDigitYear(anoRaw)
-              : int.parse(anoRaw);
+          year = anoRaw.length == 2 ? parseTwoDigitYear(anoRaw) : int.parse(anoRaw);
         } else {
           day = int.parse(match.group(1)!);
           month = int.parse(match.group(2)!);
-          final anoRaw = match.group(2)!;
-          year = anoRaw.length == 2
-              ? parseTwoDigitYear(anoRaw)
-              : int.parse(anoRaw);
+          final anoRaw = match.group(3)!;
+          year = anoRaw.length == 2 ? parseTwoDigitYear(anoRaw) : int.parse(anoRaw);
         }
         try {
           DateTime date = DateTime(year, month, day);
@@ -300,37 +272,21 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
       }
     }
 
-    return dates;
-  }
-
-  Future<XFile?> rotateXFileImage(XFile xfile, double angleDegrees) async {
-    try {
-      final Uint8List bytes = await xfile.readAsBytes();
-      final imge.Image? image = imge.decodeImage(bytes);
-      if (image == null) return null;
-      final rotated = imge.copyRotate(image, angle: angleDegrees);
-
-      final Uint8List rotatedBytes =
-      Uint8List.fromList(imge.encodeJpg(rotated));
-
-      // Guarda a imagem num ficheiro temporário
-      final dir = await getTemporaryDirectory();
-      final path =
-          '${dir.path}/rotated_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final file = await File(path).writeAsBytes(rotatedBytes);
-
-      return XFile(file.path);
-    } catch (e) {
-      print('Erro ao rotacionar imagem: $e');
-      return null;
-    }
+    return dates.isNotEmpty ? dates : null;
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text("Confirmação dos dados")),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text("Confirmação dos dados"),
+        title: const Text("Confirmação dos dados"),
       ),
       body: SingleChildScrollView(
         child: Center(
@@ -345,62 +301,41 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(widget.imagesList.length, (index) {
-                      return FutureBuilder<XFile?>(
-                        future: rotateXFileImage(widget.imagesList[index], -angle!),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return const SizedBox(
-                              height: 300,
-                              child: Center(child: CircularProgressIndicator()),
-                            );
-                          } else if (snapshot.hasError ||
-                              snapshot.data == null) {
-                            return const SizedBox(
-                              height: 300,
-                              child:
-                              Center(child: Text('Erro a carregar imagem')),
-                            );
-                          } else {
-                            return Padding(
-                              padding: const EdgeInsets.all(2.0),
-                              child: Image.file(
-                                File(snapshot.data!.path),
-                                height: 300,
-                                fit: BoxFit.cover,
-                              ),
-                            );
-                          }
-                        },
+                      return Padding(
+                        padding: const EdgeInsets.all(2.0),
+                        child: Image.file(
+                          File(widget.imagesList[index].path),
+                          height: 300,
+                          fit: BoxFit.cover,
+                        ),
                       );
                     }),
                   ),
                 ),
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               Padding(
-                padding: EdgeInsets.all(20),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    Text(
+                    const Text(
                       "Tipo do documento",
-                      style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     Text(
-                      inferredDocTypeName,//guessDocType(_extractedTextsList),
-                      style: TextStyle(fontSize: 12),
+                      inferredDocTypeName,
+                      style: const TextStyle(fontSize: 12),
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     Text(
-                      "$text : $coords",
-                      style: TextStyle(fontSize: 12),
+                      "$text : ${coords ?? 'Não encontrado'}",
+                      style: const TextStyle(fontSize: 12),
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
                     Text(
-                      "Angle : $angle",
-                      style: TextStyle(fontSize: 12),
+                      "Angle : ${angle ?? 'Não calculado'}",
+                      style: const TextStyle(fontSize: 12),
                     ),
                   ],
                 ),
@@ -410,5 +345,11 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    ds?.dispose();
+    super.dispose();
   }
 }

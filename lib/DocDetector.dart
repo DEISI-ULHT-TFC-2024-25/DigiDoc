@@ -235,47 +235,70 @@ class DocDetector {
     ];
   }
 
-  void catchDocument({required imag.Image image,required int width,required int height,})
+  void catchDocument({
+    required imag.Image image,
+    required int width,
+    required int height,
+    required List<int> startPointLeft,
+    required List<int> startPointTop,
+    required List<int> startPointRight,
+    required List<int> startPointBottom,
+  })
   {
-    imag.Image imageBin = imag.copyResize(image, width: 800);
+    // Passo 1: Redimensionar a imagem e ajustar os pontos iniciais
+    const int binWidthTarget = 800;
+    final double scaleFactor = binWidthTarget / width;
+    imag.Image imageBin = imag.copyResize(image, width: binWidthTarget);
+    final int imageBinWidth = imageBin.width;
+    final int imageBinHeight = imageBin.height;
+
+    // Ajustar os pontos iniciais para a nova escala
+    final List<int> scaledStartPointTop = [
+      (startPointTop[0] * scaleFactor).round(),
+      (startPointTop[1] * scaleFactor).round()
+    ];
+    final List<int> scaledStartPointBottom = [
+      (startPointBottom[0] * scaleFactor).round(),
+      (startPointBottom[1] * scaleFactor).round()
+    ];
+    final List<int> scaledStartPointLeft = [
+      (startPointLeft[0] * scaleFactor).round(),
+      (startPointLeft[1] * scaleFactor).round()
+    ];
+    final List<int> scaledStartPointRight = [
+      (startPointRight[0] * scaleFactor).round(),
+      (startPointRight[1] * scaleFactor).round()
+    ];
+
+    // Passo 2: Pré-processamento da imagem binarizada
     imageBin = imag.grayscale(imageBin);
     imageBin = imag.gaussianBlur(imageBin, radius: 5);
     imageBin = imag.sobel(imageBin);
     imageBin = binarizeImage(image: imageBin);
 
-    int imageBinWidth = imageBin.width;
-    int imageBinHeight = imageBin.height;
+    // Passo 3: Definir margens e intervalos na escala da imagem binarizada
+    final int margin = (imageBinWidth * 0.1).round(); // 10% da largura binarizada
+    final int imageBinMiddleWidth = imageBinWidth ~/ 2;
+    final int imageBinMiddleHeight = imageBinHeight ~/ 2;
+    final List<int> gapIterX = [imageBinMiddleWidth - margin, imageBinMiddleWidth + margin];
+    final List<int> gapIterY = [imageBinMiddleHeight - margin, imageBinMiddleHeight + margin];
 
-    int imageBinWidthEnd = imageBinWidth - 1;
-    int imageBinHeightEnd = imageBinHeight - 1;
+    // Passo 4: Detectar bordas
+    List<List<int>> edges = List.generate(4, (_) => [0, 0]); // [top, bottom, left, right]
+    double? angleTop, angleBottom, angleLeft, angleRight;
+    int xPoint = -1, yPoint = -1;
+    const double ts = 5; // Ajustar o limiar para maior robustez
 
-    List<List<int>> edges = List.generate(4, (_) => [0, 0]);  // [top, bottom, left, right]
-
-    double? angleTop;
-    double? angleBottom;
-    double? angleLeft;
-    double? angleRight;
-
-    int imageBinMiddleHeight = imageBinHeight ~/ 2;
-    int imageBinMiddleWidth = imageBinWidth ~/ 2;
-
-    int margin = (width * 0.1333).round();
-    List<int> gapIterX = [imageBinMiddleWidth - margin, imageBinMiddleWidth + margin];
-    List<int> gapIterY = [imageBinMiddleHeight - margin, imageBinMiddleHeight + margin];
-
-    int xPoint = -1;
-    int yPoint = -1;
-
-    double ts = 3;
-
-    for (int y = 0; y < imageBinMiddleHeight; y++) {
+    // Borda superior
+    for (int y = scaledStartPointTop[1]; y >= 0; y--) {
       int whiteCount = 0;
       for (int x = gapIterX[0]; x < gapIterX[1]; x++) {
-        if (imageBin.getPixel(x, y).r == 255 &&
-            imageBin.getPixel(x, y).g == 255 &&
-            imageBin.getPixel(x, y).b == 255) {
-          whiteCount++;
-          xPoint = x;
+        if (x >= 0 && x < imageBinWidth && y >= 0 && y < imageBinHeight) {
+          final pixel = imageBin.getPixel(x, y);
+          if (pixel.r == 255 && pixel.g == 255 && pixel.b == 255) {
+            whiteCount++;
+            xPoint = x;
+          }
         }
       }
       if (whiteCount > ts) {
@@ -288,29 +311,21 @@ class DocDetector {
           threshold: margin,
           horizontalOnly: true,
         );
-        if (angleTop != null) {
-          if (angleTop > 1 && angleTop < 20) {
-            imageBin = rotateImage(image: imageBin, angleDegrees: -angleTop);
-            image = rotateImage(image: image, angleDegrees: -angleTop);
-          } else if (angleTop > 100 && angleTop < 178) {
-            imageBin = rotateImage(image: imageBin, angleDegrees: 180 - angleTop);
-            image = rotateImage(image: image, angleDegrees: 180 - angleTop);
-          } else {
-            break;
-          }
-        }
+        if (angleTop != null) break;
       }
     }
 
+    // Borda inferior
     xPoint = -1;
-    for (int y = imageBinHeightEnd; y > imageBinMiddleHeight; y--) {
+    for (int y = scaledStartPointBottom[1]; y < imageBinHeight; y++) {
       int whiteCount = 0;
       for (int x = gapIterX[0]; x < gapIterX[1]; x++) {
-        if (imageBin.getPixel(x, y).r == 255 &&
-            imageBin.getPixel(x, y).g == 255 &&
-            imageBin.getPixel(x, y).b == 255) {
-          whiteCount++;
-          xPoint = x;
+        if (x >= 0 && x < imageBinWidth && y >= 0 && y < imageBinHeight) {
+          final pixel = imageBin.getPixel(x, y);
+          if (pixel.r == 255 && pixel.g == 255 && pixel.b == 255) {
+            whiteCount++;
+            xPoint = x;
+          }
         }
       }
       if (whiteCount > ts) {
@@ -323,20 +338,20 @@ class DocDetector {
           threshold: margin,
           horizontalOnly: true,
         );
-        if (angleBottom != null) {
-          break;
-        }
+        if (angleBottom != null) break;
       }
     }
 
-    for (int x = 0; x < imageBinMiddleWidth; x++) {
+    // Borda esquerda
+    for (int x = scaledStartPointLeft[0]; x >= 0; x--) {
       int whiteCount = 0;
       for (int y = gapIterY[0]; y < gapIterY[1]; y++) {
-        if (imageBin.getPixel(x, y).r == 255 &&
-            imageBin.getPixel(x, y).g == 255 &&
-            imageBin.getPixel(x, y).b == 255) {
-          whiteCount++;
-          yPoint = y;
+        if (x >= 0 && x < imageBinWidth && y >= 0 && y < imageBinHeight) {
+          final pixel = imageBin.getPixel(x, y);
+          if (pixel.r == 255 && pixel.g == 255 && pixel.b == 255) {
+            whiteCount++;
+            yPoint = y;
+          }
         }
       }
       if (whiteCount > ts) {
@@ -349,21 +364,21 @@ class DocDetector {
           threshold: margin,
           horizontalOnly: false,
         );
-        if (angleLeft != null) {
-          break;
-        }
+        if (angleLeft != null) break;
       }
     }
 
+    // Borda direita
     yPoint = -1;
-    for (int x = imageBinWidthEnd; x > imageBinMiddleWidth; x--) {
+    for (int x = scaledStartPointRight[0]; x < imageBinWidth; x++) {
       int whiteCount = 0;
       for (int y = gapIterY[0]; y < gapIterY[1]; y++) {
-        if (imageBin.getPixel(x, y).r == 255 &&
-            imageBin.getPixel(x, y).g == 255 &&
-            imageBin.getPixel(x, y).b == 255) {
-          whiteCount++;
-          yPoint = y;
+        if (x >= 0 && x < imageBinWidth && y >= 0 && y < imageBinHeight) {
+          final pixel = imageBin.getPixel(x, y);
+          if (pixel.r == 255 && pixel.g == 255 && pixel.b == 255) {
+            whiteCount++;
+            yPoint = y;
+          }
         }
       }
       if (whiteCount > ts) {
@@ -376,37 +391,44 @@ class DocDetector {
           threshold: margin,
           horizontalOnly: false,
         );
-        if (angleRight != null) {
-          break;
-        }
+        if (angleRight != null) break;
       }
     }
 
-    if (angleBottom != null && angleTop != null && angleRight != null && angleLeft != null) {
+    // Passo 5: Processar bordas detectadas
+    if (angleTop != null && angleBottom != null && angleLeft != null && angleRight != null) {
+      // Ajustar coordenadas de volta para a escala original
+      final List<List<double>> scaledEdges = edges.map((edge) => [
+        edge[0] / scaleFactor,
+        edge[1] / scaleFactor,
+      ]).toList();
+
       List<List<double>> corners = findCorners(
         angleTop: angleTop,
         angleBottom: angleBottom,
         angleLeft: angleLeft,
         angleRight: angleRight,
-        topX: edges[0][0],
-        topY: edges[0][1],
-        bottomX: edges[1][0],
-        bottomY: edges[1][1],
-        leftX: edges[2][0],
-        leftY: edges[2][1],
-        rightX: edges[3][0],
-        rightY: edges[3][1],
+        topX: scaledEdges[0][0].round(),
+        topY: scaledEdges[0][1].round(),
+        bottomX: scaledEdges[1][0].round(),
+        bottomY: scaledEdges[1][1].round(),
+        leftX: scaledEdges[2][0].round(),
+        leftY: scaledEdges[2][1].round(),
+        rightX: scaledEdges[3][0].round(),
+        rightY: scaledEdges[3][1].round(),
         originalWidth: width,
         originalHeight: height,
         binWidth: imageBinWidth,
         binHeight: imageBinHeight,
       );
+
       imageCorners = corners;
       print("Corners: $corners");
 
       List<List<double>> dstPoints = getCorrectedCornersPerspective(srcPoints: corners);
       print("DstPoints: $dstPoints");
 
+      // Aplicar perspectiva e recorte na imagem original
       image = correctPerspective(
         image: image,
         srcPoints: dstPoints,
@@ -418,7 +440,7 @@ class DocDetector {
       print("Image processed: ${imageResult!.width}x${imageResult!.height}");
     } else {
       print("Edge detection failed: top=$angleTop, bottom=$angleBottom, left=$angleLeft, right=$angleRight");
-      imageResult = imageBin;
+      imageResult = image; // Retornar a imagem original em caso de falha
     }
   }
 
