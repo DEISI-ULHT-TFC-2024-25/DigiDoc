@@ -1,4 +1,4 @@
-import 'package:digidoc/screens/pick_document_photo.dart';
+import 'package:digidoc/screens/capture_document_photo.dart';
 import 'package:digidoc/screens/upload_document.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -138,7 +138,7 @@ class _DossierScreenState extends State<DossierScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => PickDocumentPhotoScreen(),
+                      builder: (context) => CaptureDocumentPhotoScreen(),
                     ),
                   ).then((_) => loadDocuments());
                 },
