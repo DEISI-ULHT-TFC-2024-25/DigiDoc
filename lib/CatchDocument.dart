@@ -11,7 +11,6 @@ class CatchDocument {
 
   CatchDocument(this._imageFile);
 
-  /// Rotaciona a imagem com base no ângulo fornecido
   Future<imge.Image?> rotateImage(imge.Image originalImg, double angleDegrees) async {
     try {
       print('Rotacionando imagem: ${originalImg.width}x${originalImg.height}, ângulo: $angleDegrees');
@@ -28,7 +27,6 @@ class CatchDocument {
     }
   }
 
-  /// Inicializa o scanner e o detector com a imagem fornecida
   Future<void> initialize() async {
     try {
       print('Inicializando CatchDocument para ${_imageFile.path}');
@@ -51,11 +49,10 @@ class CatchDocument {
       print('Detector inicializado com imagem: ${_detector.imageResult!.width}x${_detector.imageResult!.height}');
     } catch (e) {
       print('Erro durante inicialização: $e');
-      rethrow; // Propaga o erro para ser capturado em _pickImage
+      rethrow;
     }
   }
 
-  /// Retorna a imagem do documento recortada automaticamente
   Future<imge.Image?> getCroppedDocument() async {
     try {
       print('Obtendo documento recortado');
@@ -93,15 +90,34 @@ class CatchDocument {
       final List<int> startPointRight = [xBottomRight, (yTopLeft + yBottomRight) ~/ 2];
       print('Pontos iniciais: Top=$startPointTop, Bottom=$startPointBottom, Left=$startPointLeft, Right=$startPointRight');
 
-      _detector.catchDocument(
-        image: _detector.imageResult!,
-        width: imageWidth,
-        height: imageHeight,
-        startPointLeft: startPointLeft,
-        startPointTop: startPointTop,
-        startPointRight: startPointRight,
-        startPointBottom: startPointBottom,
-      );
+      try {
+        _detector.catchDocument(
+          image: _detector.imageResult!,
+          width: imageWidth,
+          height: imageHeight,
+          startPointLeft: startPointLeft,
+          startPointTop: startPointTop,
+          startPointRight: startPointRight,
+          startPointBottom: startPointBottom,
+        );
+      } catch (e) {
+        print('Erro em catchDocument: $e');
+        // Fallback para recorte básico
+        final croppedImage = imge.copyCrop(
+          _detector.imageResult!,
+          x: xTopLeft,
+          y: yTopLeft,
+          width: textBoxWidth,
+          height: textBoxHeight,
+        );
+        if (croppedImage.width > 0 && croppedImage.height > 0) {
+          print('Fallback bem-sucedido: ${croppedImage.width}x${croppedImage.height}');
+          return croppedImage;
+        } else {
+          print('Fallback falhou: dimensões inválidas');
+          return null;
+        }
+      }
 
       if (_detector.imageResult == null || _detector.imageResult!.width <= 0 || _detector.imageResult!.height <= 0) {
         print('Erro: Imagem recortada inválida: ${_detector.imageResult?.width}x${_detector.imageResult?.height}');
@@ -115,7 +131,6 @@ class CatchDocument {
     }
   }
 
-  /// Recorta a imagem usando cantos personalizados fornecidos pelo usuário
   Future<imge.Image?> cropWithCustomCorners(List<List<int>> customCorners) async {
     try {
       if (customCorners.length != 4) {
@@ -184,7 +199,6 @@ class CatchDocument {
     }
   }
 
-  /// Libera os recursos
   void dispose() {
     _scanner.dispose();
   }
