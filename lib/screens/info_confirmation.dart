@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as imge;
 import 'package:path_provider/path_provider.dart';
-import '../DocumentScanner.dart';
+import '../services/DocumentScanner.dart';
 
 class InfoConfirmationScreen extends StatefulWidget {
   final List<XFile> imagesList;

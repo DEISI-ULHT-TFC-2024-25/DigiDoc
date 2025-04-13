@@ -2,22 +2,24 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as imge;
 import 'package:path_provider/path_provider.dart';
-import '../CatchDocument.dart';
+import 'package:provider/provider.dart';
+import '../services/CatchDocument.dart';
+import '../services/CurrentStateProcessing.dart';
 
 class DocumentImageViewer extends StatefulWidget {
   final File? imageFile;
-  final bool isProcessing;
   final VoidCallback? onAdd;
   final Function(File)? onImageProcessed;
   final VoidCallback? onStartCorrection;
+  final VoidCallback? onClose;
 
   const DocumentImageViewer({
     Key? key,
     this.imageFile,
-    this.isProcessing = false,
     this.onStartCorrection,
     this.onAdd,
     this.onImageProcessed,
+    this.onClose,
   }) : super(key: key);
 
   @override
@@ -27,9 +29,7 @@ class DocumentImageViewer extends StatefulWidget {
 class DocumentImageViewerState extends State<DocumentImageViewer> {
   File? _selectedImage;
   File? _originalImage;
-  bool _isCorrecting = false;
   List<Offset> _corners = [];
-  bool _internalProcessing = false;
 
   @override
   void initState() {
@@ -38,13 +38,17 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
       _processImage(widget.imageFile!);
     }
   }
+
   void startCorrection() {
-    if (_originalImage != null && !_isCorrecting) {
+    final state = Provider.of<CurrentStateProcessing>(context, listen: false);
+    if (_originalImage != null && !state.isCorrecting) {
       setState(() {
         _selectedImage = _originalImage;
-        _isCorrecting = true;
+        _corners.clear();
         _initializeDefaultCorners();
       });
+      state.setCorrecting(true);
+      state.setInternalProcessing(false);
       if (widget.onStartCorrection != null) {
         widget.onStartCorrection!();
       }
@@ -60,7 +64,8 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
   }
 
   Future<void> _processImage(File imageFile) async {
-    setState(() => _internalProcessing = true);
+    final state = Provider.of<CurrentStateProcessing>(context, listen: false);
+    state.setInternalProcessing(true);
 
     try {
       final catchDoc = CatchDocument(imageFile);
@@ -81,10 +86,10 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
         setState(() {
           _originalImage = imageFile;
           _selectedImage = croppedFile;
-          _corners = [];
-          _isCorrecting = false;
-          _internalProcessing = false;
+          _corners.clear();
         });
+        state.setCorrecting(false);
+        state.setInternalProcessing(false);
         if (widget.onImageProcessed != null) {
           widget.onImageProcessed!(croppedFile);
         }
@@ -93,8 +98,8 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
         setState(() {
           _selectedImage = imageFile;
           _originalImage = imageFile;
-          _internalProcessing = false;
         });
+        state.setInternalProcessing(false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Falha ao recortar o documento')),
         );
@@ -104,8 +109,8 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
       setState(() {
         _selectedImage = imageFile;
         _originalImage = imageFile;
-        _internalProcessing = false;
       });
+      state.setInternalProcessing(false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao processar documento: $e')),
       );
@@ -122,17 +127,18 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
       final centerY = size.height / 3;
 
       _corners = [
-        Offset(centerX - imageWidth / 2, centerY - imageHeight / 2), // Top-left
-        Offset(centerX + imageWidth / 2, centerY - imageHeight / 2), // Top-right
-        Offset(centerX + imageWidth / 2, centerY + imageHeight / 2), // Bottom-right
-        Offset(centerX - imageWidth / 2, centerY + imageHeight / 2), // Bottom-left
+        Offset(centerX - imageWidth / 2, centerY - imageHeight / 2),
+        Offset(centerX + imageWidth / 2, centerY - imageHeight / 2),
+        Offset(centerX + imageWidth / 2, centerY + imageHeight / 2),
+        Offset(centerX - imageWidth / 2, centerY + imageHeight / 2),
       ];
     }
   }
 
   Future<void> _applyManualCrop() async {
+    final state = Provider.of<CurrentStateProcessing>(context, listen: false);
     if (_corners.length == 4 && _originalImage != null) {
-      setState(() => _internalProcessing = true);
+      state.setInternalProcessing(true);
 
       final catchDoc = CatchDocument(_originalImage!);
       await catchDoc.initialize();
@@ -158,14 +164,14 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
 
         setState(() {
           _selectedImage = correctedFile;
-          _isCorrecting = false;
-          _internalProcessing = false;
         });
+        state.setCorrecting(false);
+        state.setInternalProcessing(false);
         if (widget.onImageProcessed != null) {
           widget.onImageProcessed!(correctedFile);
         }
       } else {
-        setState(() => _internalProcessing = false);
+        state.setInternalProcessing(false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Falha ao aplicar o recorte manual')),
         );
@@ -183,9 +189,25 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
     });
   }
 
+  void _closeImage() {
+    final state = Provider.of<CurrentStateProcessing>(context, listen: false);
+    setState(() {
+      _selectedImage = null;
+      _originalImage = null;
+      _corners.clear();
+    });
+    state.setCorrecting(false);
+    state.setInternalProcessing(false);
+    if (widget.onClose != null) {
+      widget.onClose!();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (widget.isProcessing || _internalProcessing) {
+    final state = Provider.of<CurrentStateProcessing>(context);
+
+    if (state.isProcessing || state.internalProcessing) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -210,28 +232,34 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
         alignment: Alignment.center,
         children: [
           Image.file(_selectedImage!),
-          if (_isCorrecting && _corners.isNotEmpty)
+          if (state.isCorrecting && _corners.isNotEmpty)
             CustomPaint(
               painter: RectanglePainter(_corners),
               child: GestureDetector(
                 onPanUpdate: _updateCornerPosition,
               ),
             ),
-          if (_isCorrecting)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton(
+              onPressed: _closeImage,
+              icon: const Icon(Icons.close, size: 20, color: Colors.white),
+            ),
+          ),
+          if (state.isCorrecting)
             Positioned(
               bottom: 10,
               child: ElevatedButton(
                 onPressed: _applyManualCrop,
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                child: const Text('Confirmar', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
+                child: const Text('Confirmar', style: TextStyle(color: Colors.black)),
               ),
             ),
         ],
       ),
     );
   }
-
-
 }
 
 class RectanglePainter extends CustomPainter {

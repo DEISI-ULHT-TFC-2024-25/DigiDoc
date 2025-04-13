@@ -5,7 +5,6 @@ import 'package:image/image.dart' as imge;
 import 'package:path_provider/path_provider.dart';
 
 class TextProcessor {
-  /// Normaliza um texto removendo acentos, convertendo para minúsculas e ajustando espaços
   String normalizeText(String text) {
     String normalized = text
         .toLowerCase()
@@ -35,7 +34,6 @@ class TextProcessor {
     return normalized;
   }
 
-  /// Processa um documento e salva as coordenadas normalizadas dos textos encontrados no arquivo docs_texts_map.txt
   Future<void> processDocumentAndSaveTextMap({
     required String docTypeName,
     required XFile imageFile,
@@ -43,11 +41,9 @@ class TextProcessor {
   }) async {
     final textRecognizer = TextRecognizer();
     try {
-      // Reconhecer texto na imagem
       final inputImage = InputImage.fromFilePath(imageFile.path);
       final recognizedText = await textRecognizer.processImage(inputImage);
 
-      // Obter dimensões da imagem
       final imageBytes = await imageFile.readAsBytes();
       final image = imge.decodeImage(imageBytes);
       if (image == null) {
@@ -56,7 +52,6 @@ class TextProcessor {
       final imageWidth = image.width;
       final imageHeight = image.height;
 
-      // Mapear textos encontrados com suas coordenadas normalizadas
       final textCoordinatesMap = <String, List<double>>{};
 
       for (final text in textsToFind) {
@@ -94,14 +89,12 @@ class TextProcessor {
         }
       }
 
-      // Criar entrada para o arquivo
       final entryParts = textCoordinatesMap.entries
           .map((e) => '${e.key}-${e.value.join(",")}')
           .join(';');
 
       final newEntry = '$docTypeName:$entryParts';
 
-      // Ler e atualizar o arquivo docs_texts_map.txt
       final directory = await getApplicationDocumentsDirectory();
       final filePath = '${directory.path}/docs_texts_map.txt';
       final file = File(filePath);
@@ -115,13 +108,13 @@ class TextProcessor {
       final updatedLines = existingLines.map((line) {
         if (line.startsWith('$docTypeName:')) {
           found = true;
-          return '$line|$entryParts'; // Adiciona novos textos à linha existente
+          return '$line|$entryParts';
         }
         return line;
       }).toList();
 
       if (!found && entryParts.isNotEmpty) {
-        updatedLines.add(newEntry); // Adiciona nova entrada se não existir
+        updatedLines.add(newEntry);
       }
 
       await file.writeAsString(updatedLines.join('\n'));

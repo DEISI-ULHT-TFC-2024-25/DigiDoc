@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../DataBaseHelper.dart';
-import '../main.dart';
+import '../models/DataBaseHelper.dart';
+import '../constants/color_app.dart';
 import 'dossier.dart';
 
 

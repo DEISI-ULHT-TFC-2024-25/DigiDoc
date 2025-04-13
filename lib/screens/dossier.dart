@@ -2,8 +2,9 @@ import 'package:digidoc/screens/capture_document_photo.dart';
 import 'package:digidoc/screens/upload_document.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../DataBaseHelper.dart';
-import '../main.dart';
+import '../models/DataBaseHelper.dart';
+import '../constants/color_app.dart';
+
 
 class DossierScreen extends StatefulWidget {
   final int dossierId;

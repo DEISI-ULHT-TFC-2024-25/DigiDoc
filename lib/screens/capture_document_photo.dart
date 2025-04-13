@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../services/CurrentStateProcessing.dart';
 import 'info_confirmation.dart';
-import 'DocumentImageViewer.dart';
+import '../widgets/DocumentImageViewer.dart';
 
 class CaptureDocumentPhotoScreen extends StatefulWidget {
   @override
@@ -15,7 +17,6 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
   List<XFile> _capturedImages = [];
   bool _isCameraInitialized = false;
   File? _imgJustCaptured;
-  bool _isProcessing = false;
   final GlobalKey<DocumentImageViewerState> _viewerKey = GlobalKey<DocumentImageViewerState>();
 
   @override
@@ -42,12 +43,15 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
   Future<void> _captureImage() async {
     if (_cameraController != null && _cameraController!.value.isInitialized) {
       try {
-        setState(() => _isProcessing = true);
+        final state = Provider.of<CurrentStateProcessing>(context, listen: false);
+        state.setProcessing(true);
         final XFile image = await _cameraController!.takePicture();
         setState(() {
           _imgJustCaptured = File(image.path);
         });
+        state.setProcessing(false);
       } catch (e) {
+        Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Erro ao capturar imagem: $e")),
         );
@@ -76,6 +80,12 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
     });
   }
 
+  void _handleClose() {
+    setState(() {
+      _imgJustCaptured = null;
+    });
+  }
+
   @override
   void dispose() {
     _cameraController?.dispose();
@@ -100,14 +110,14 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
                 : DocumentImageViewer(
               key: _viewerKey,
               imageFile: _imgJustCaptured,
-              isProcessing: _isProcessing,
               onAdd: _addImage,
               onImageProcessed: (file) {
                 setState(() {
                   _imgJustCaptured = file;
-                  _isProcessing = false;
                 });
+                Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(false);
               },
+              onClose: _handleClose,
             )
                 : const Center(child: CircularProgressIndicator()),
           ),

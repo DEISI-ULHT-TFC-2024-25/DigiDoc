@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import '../services/CurrentStateProcessing.dart';
 import 'info_confirmation.dart';
-import 'DocumentImageViewer.dart';
+import '../widgets/DocumentImageViewer.dart';
 
 class UploadDocumentScreen extends StatefulWidget {
   @override
@@ -13,8 +15,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
   File? _selectedImage;
   List<File> _uploadedDocuments = [];
   final ImagePicker _picker = ImagePicker();
-  bool _isProcessing = false;
-  final GlobalKey<DocumentImageViewerState> _viewerKey = GlobalKey<DocumentImageViewerState>(); // Alterado aqui
+  final GlobalKey<DocumentImageViewerState> _viewerKey = GlobalKey<DocumentImageViewerState>();
 
   Future<void> _uploadImage() async {
     final XFile? image = await _picker.pickImage(
@@ -25,8 +26,8 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
     );
 
     if (image != null) {
+      Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(true);
       setState(() {
-        _isProcessing = true;
         _selectedImage = File(image.path);
       });
     }
@@ -37,9 +38,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
       setState(() {
         _uploadedDocuments.add(_selectedImage!);
         _selectedImage = null;
-
       });
-
     }
   }
 
@@ -52,6 +51,25 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
   void _startCorrection() {
     if (_selectedImage != null) {
       _viewerKey.currentState?.startCorrection();
+    }
+  }
+
+  void _handleClose() {
+    setState(() {
+      _selectedImage = null;
+    });
+  }
+
+  void _navigateToConfirmation() {
+    if (_uploadedDocuments.isNotEmpty && _selectedImage == null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => InfoConfirmationScreen(
+            imagesList: _uploadedDocuments.map((file) => XFile(file.path)).toList(),
+          ),
+        ),
+      );
     }
   }
 
@@ -69,16 +87,17 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
           children: [
             Expanded(
               child: DocumentImageViewer(
+                key: _viewerKey,
                 imageFile: _selectedImage,
-                isProcessing: _isProcessing,
                 onStartCorrection: _startCorrection,
                 onAdd: _addDocument,
                 onImageProcessed: (file) {
                   setState(() {
                     _selectedImage = file;
-                    _isProcessing = false;
                   });
+                  Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(false);
                 },
+                onClose: _handleClose,
               ),
             ),
             if (_uploadedDocuments.isNotEmpty)
@@ -146,7 +165,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                     IconButton(
                       icon: Icon(
                         _selectedImage == null ? Icons.file_upload_outlined : Icons.add_photo_alternate,
-                        color: Colors.white,
+                        color: _selectedImage == null ? Colors.white : Colors.white,
                         size: 50,
                       ),
                       onPressed: _selectedImage == null ? _uploadImage : _addDocument,
@@ -155,7 +174,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                       _selectedImage == null ? "Carregar" : "Adicionar",
                       style: TextStyle(
                         fontSize: 14,
-                        color: _selectedImage == null ? Colors.grey : Colors.white,
+                        color: _selectedImage == null ? Colors.white : Colors.white,
                       ),
                     ),
                   ],
@@ -164,21 +183,20 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                 Column(
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.check_circle, color: Colors.white, size: 50),
-                      onPressed: _uploadedDocuments.isNotEmpty && _selectedImage == null
-                          ? () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => InfoConfirmationScreen(
-                              imagesList: _uploadedDocuments.map((file) => XFile(file.path)).toList(),
-                            ),
-                          ),
-                        );
-                      }
-                          : null,
+                      icon: Icon(
+                        Icons.check_circle,
+                        color: _uploadedDocuments.isNotEmpty && _selectedImage == null ? Colors.white : Colors.grey,
+                        size: 50,
+                      ),
+                      onPressed: _uploadedDocuments.isNotEmpty && _selectedImage == null ? _navigateToConfirmation : null,
                     ),
-                    const Text("Pronto", style: TextStyle(fontSize: 14, color: Colors.white)),
+                    Text(
+                      "Pronto",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: _uploadedDocuments.isNotEmpty && _selectedImage == null ? Colors.white : Colors.grey,
+                      ),
+                    ),
                   ],
                 ),
               ],

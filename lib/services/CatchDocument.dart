@@ -102,7 +102,6 @@ class CatchDocument {
         );
       } catch (e) {
         print('Erro em catchDocument: $e');
-        // Fallback para recorte básico
         final croppedImage = imge.copyCrop(
           _detector.imageResult!,
           x: xTopLeft,
