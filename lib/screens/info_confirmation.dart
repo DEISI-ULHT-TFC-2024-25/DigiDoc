@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image/image.dart' as imge;
 import 'package:path_provider/path_provider.dart';
-import '../services/DocumentScanner.dart';
+import '../services/DocScanner.dart';
 
 class InfoConfirmationScreen extends StatefulWidget {
   final List<XFile> imagesList;
@@ -23,7 +23,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
   String text = "carta";
   List<int>? coords = [];
   double? angle;
-  DocumentScanner? ds; // Alterado para nullable
+  DocScanner? ds;
   String inferredDocTypeName = 'Tipo não detectado';
   bool _isLoading = true;
 
@@ -47,7 +47,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
     if (widget.imagesList.isNotEmpty) {
       XFile image = widget.imagesList[0];
       inferredDocTypeName = await _inferDocTypeName(image);
-      ds = await DocumentScanner.create(File(image.path));
+      ds = await DocScanner.create(File(image.path));
       coords = await ds!.getTextAreaCoordinates();
       angle = await ds!.getMostFreqAngle();
     }
@@ -196,7 +196,9 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
 
   Future<void> _processImages() async {
     for (var image in widget.imagesList) {
-      String extractedText = await DocumentScanner(File(image.path)).extractTextAndNormalise();
+      // Corrigido: Usar DocumentScanner.create em vez de construtor sem nome
+      DocScanner scanner = await DocScanner.create(File(image.path));
+      String extractedText = await scanner.extractTextAndNormalise();
       List<DateTime>? futuresDate = extractFutureDate(extractedText);
       String extractedAlert = "";
       if (futuresDate != null && futuresDate.isNotEmpty) {
@@ -213,6 +215,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
           _extractedAlertsList.add(extractedAlert);
         });
       }
+      scanner.dispose(); // Liberar recursos
     }
   }
 

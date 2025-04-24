@@ -28,7 +28,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.mainSolidDarkerColor,
+        backgroundColor: AppColors.darkerBlue,
         title: Text(
           _titles[_selectedIndex],
           style: const TextStyle(color: Colors.white),
