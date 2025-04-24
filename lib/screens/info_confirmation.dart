@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
@@ -139,37 +138,35 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
     for (var block in recognizedText.blocks) {
       for (var line in block.lines) {
         for (var element in line.elements) {
-          if (element.boundingBox != null) {
-            final boundingBox = element.boundingBox!;
-            final textRect = math.Rectangle<double>(
-              boundingBox.left,
-              boundingBox.top,
-              boundingBox.width,
-              boundingBox.height,
-            );
+          final boundingBox = element.boundingBox;
+          final textRect = math.Rectangle<double>(
+            boundingBox.left,
+            boundingBox.top,
+            boundingBox.width,
+            boundingBox.height,
+          );
 
-            if (targetRect.intersects(textRect)) {
-              final intersection = targetRect.intersection(textRect);
-              if (intersection != null) {
-                double intersectionArea = intersection.width * intersection.height;
-                double textRectArea = textRect.width * textRect.height;
-                double overlapRatio = intersectionArea / textRectArea;
+          if (targetRect.intersects(textRect)) {
+            final intersection = targetRect.intersection(textRect);
+            if (intersection != null) {
+              double intersectionArea = intersection.width * intersection.height;
+              double textRectArea = textRect.width * textRect.height;
+              double overlapRatio = intersectionArea / textRectArea;
 
-                if (overlapRatio > 0) {
-                  String recognizedTextLower = element.text.toLowerCase();
-                  String paramTextLower = targetText.toLowerCase();
+              if (overlapRatio > 0) {
+                String recognizedTextLower = element.text.toLowerCase();
+                String paramTextLower = targetText.toLowerCase();
 
-                  if (recognizedTextLower.contains(paramTextLower)) {
-                    bestScore = math.max(bestScore, 1.0);
-                  } else {
-                    int lcsLength = _longestCommonSubsequence(recognizedTextLower, paramTextLower);
-                    bestScore = math.max(bestScore, lcsLength / paramTextLower.length);
-                  }
+                if (recognizedTextLower.contains(paramTextLower)) {
+                  bestScore = math.max(bestScore, 1.0);
+                } else {
+                  int lcsLength = _longestCommonSubsequence(recognizedTextLower, paramTextLower);
+                  bestScore = math.max(bestScore, lcsLength / paramTextLower.length);
                 }
               }
             }
           }
-        }
+                }
       }
     }
 
@@ -298,7 +295,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
             children: <Widget>[
               Container(
                 height: 300,
-                color: Colors.black,
+                color: Colors.white,
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(

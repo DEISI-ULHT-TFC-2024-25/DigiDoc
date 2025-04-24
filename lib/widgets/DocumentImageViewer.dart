@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as imge;
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import '../constants/color_app.dart';
 import '../services/CatchDocument.dart';
 import '../services/CurrentStateProcessing.dart';
 
@@ -534,10 +535,10 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
                       ElevatedButton.icon(
                         onPressed: applyManualCrop,
                         icon: const Icon(Icons.crop),
-                        label: const Text('Aplicar Recorte'),
+                        label: const Text('Recortar'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue,
-                          foregroundColor: Colors.white,
+                          backgroundColor: AppColors.lighterBlue,
+                          foregroundColor: AppColors.calmWhite,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -547,7 +548,7 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
                         label: const Text('Cancelar'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey,
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppColors.calmWhite,
                         ),
                       ),
                     ],
@@ -629,28 +630,6 @@ class CornersPainter extends CustomPainter {
         ..strokeWidth = 2
         ..style = PaintingStyle.stroke;
       canvas.drawCircle(corner, radius, borderPaint);
-    }
-
-    // Draw polygon center indicator when dragging polygon
-    if (isDraggingPolygon) {
-      final centerX = corners.map((c) => c.dx).reduce((a, b) => a + b) / 4;
-      final centerY = corners.map((c) => c.dy).reduce((a, b) => a + b) / 4;
-      final center = Offset(centerX, centerY);
-      canvas.drawCircle(
-        center,
-        10.0,
-        Paint()
-          ..color = Colors.blue
-          ..style = PaintingStyle.fill,
-      );
-      canvas.drawCircle(
-        center,
-        10.0,
-        Paint()
-          ..color = Colors.white
-          ..strokeWidth = 2
-          ..style = PaintingStyle.stroke,
-      );
     }
 
     // Draw magnifier only when dragging a corner
