@@ -10,17 +10,23 @@ class CurrentStateProcessing extends ChangeNotifier {
   bool get internalProcessing => _internalProcessing;
 
   void setProcessing(bool value) {
-    _isProcessing = value;
-    notifyListeners();
+    if (_isProcessing != value) {
+      _isProcessing = value;
+      notifyListeners();
+    }
   }
 
   void setCorrecting(bool value) {
-    _isCorrecting = value;
-    notifyListeners();
+    if (_isCorrecting != value) {
+      _isCorrecting = value;
+      notifyListeners();
+    }
   }
 
   void setInternalProcessing(bool value) {
-    _internalProcessing = value;
-    notifyListeners();
+    if (_internalProcessing != value) {
+      _internalProcessing = value;
+      notifyListeners();
+    }
   }
 }

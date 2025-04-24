@@ -21,7 +21,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'DigiDoc',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.mainSolidDarkerColor),
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.darkerBlue),
         useMaterial3: true,
       ),
       home: const MyHomePage(title: 'Confirmação de dados'),

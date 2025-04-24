@@ -79,7 +79,7 @@ class _DossiersScreenState extends State<DossiersScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(Icons.folder,
-                        size: 40, color: AppColors.mainSolidDarkerColor),
+                        size: 40, color: AppColors.darkerBlue),
                   ),
                   SizedBox(height: 5),
                   Text(dossiers[index]['name'],
@@ -120,7 +120,7 @@ class _DossiersScreenState extends State<DossiersScreen> {
             },
           );
         },
-        backgroundColor: AppColors.mainSolidDarkerColor,
+        backgroundColor: AppColors.darkerBlue,
         child: Icon(Icons.create_new_folder, color: Colors.white),
       ),
     );
