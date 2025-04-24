@@ -92,10 +92,12 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                 onStartCorrection: _startCorrection,
                 onAdd: _addDocument,
                 onImageProcessed: (file) {
-                  setState(() {
-                    _selectedImage = file;
-                  });
+                  // Apenas atualiza o estado de processamento
                   Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(false);
+                  // A imagem processada já está em _selectedImage do DocumentImageViewer
+                  setState(() {
+                    _selectedImage = file; // Mantém a imagem processada para uso no _addDocument
+                  });
                 },
                 onClose: _handleClose,
               ),

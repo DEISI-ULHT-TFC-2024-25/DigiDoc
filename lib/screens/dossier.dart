@@ -1,5 +1,5 @@
-import 'package:digidoc/screens/capture_document_photo.dart';
-import 'package:digidoc/screens/upload_document.dart';
+import 'package:DigiDoc/screens/capture_document_photo.dart';
+import 'package:DigiDoc/screens/upload_document.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../models/DataBaseHelper.dart';
@@ -50,7 +50,7 @@ class _DossierScreenState extends State<DossierScreen> {
           widget.dossierName,
           style: TextStyle(color: Colors.white),
         ),
-        backgroundColor: AppColors.mainSolidDarkerColor,
+        backgroundColor: AppColors.darkerBlue,
         iconTheme: IconThemeData(color: Colors.white),
         centerTitle: true,
       ),
@@ -105,7 +105,7 @@ class _DossierScreenState extends State<DossierScreen> {
               Text(
                 "Galeria",
                 style:
-                TextStyle(color: AppColors.mainSolidDarkerColor, fontSize: 12),
+                TextStyle(color: AppColors.darkerBlue, fontSize: 12),
               ),
               FloatingActionButton(
                 onPressed: () {
@@ -120,7 +120,7 @@ class _DossierScreenState extends State<DossierScreen> {
                   Icons.photo,
                   color: Colors.white,
                 ),
-                backgroundColor: AppColors.mainSolidDarkerColor,
+                backgroundColor: AppColors.darkerBlue,
                 heroTag: null,
               ),
             ],
@@ -132,7 +132,7 @@ class _DossierScreenState extends State<DossierScreen> {
               Text(
                 "Foto",
                 style:
-                TextStyle(color: AppColors.mainSolidDarkerColor, fontSize: 12),
+                TextStyle(color: AppColors.darkerBlue, fontSize: 12),
               ),
               FloatingActionButton(
                 onPressed: () {
@@ -147,7 +147,7 @@ class _DossierScreenState extends State<DossierScreen> {
                   Icons.camera_alt,
                   color: Colors.white,
                 ),
-                backgroundColor: AppColors.mainSolidDarkerColor,
+                backgroundColor: AppColors.darkerBlue,
                 heroTag: null,
               ),
             ],
@@ -156,7 +156,7 @@ class _DossierScreenState extends State<DossierScreen> {
           FloatingActionButton(
             onPressed: _toggleExpand,
             child: Icon(Icons.close, color: Colors.white),
-            backgroundColor: AppColors.mainSolidDarkerColor,
+            backgroundColor: AppColors.darkerBlue,
           ),
         ],
       )
@@ -165,12 +165,12 @@ class _DossierScreenState extends State<DossierScreen> {
         children: [
           Text(
             "Adicionar\nDocumento",
-            style: TextStyle(color: AppColors.mainSolidDarkerColor, fontSize: 12),
+            style: TextStyle(color: AppColors.darkerBlue, fontSize: 12),
           ),
           SizedBox(height: 4),
           FloatingActionButton(
             onPressed: _toggleExpand,
-            backgroundColor: AppColors.mainSolidDarkerColor,
+            backgroundColor: AppColors.darkerBlue,
             child: Icon(Icons.add, color: Colors.white),
           ),
         ],

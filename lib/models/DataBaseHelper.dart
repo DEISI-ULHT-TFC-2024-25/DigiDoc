@@ -1,10 +1,12 @@
+// models/DataBaseHelper.dart
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
 
 class DataBaseHelper {
-
   static final DataBaseHelper instance = DataBaseHelper._internal();
   factory DataBaseHelper() => instance;
   DataBaseHelper._internal();
@@ -41,8 +43,9 @@ class DataBaseHelper {
         await db.execute('''
           CREATE TABLE User_data (
             user_data_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            pin TEXT NOT NULL,
-            biometric BOOLEAN NOT NULL
+            email TEXT NOT NULL UNIQUE,
+            pin_hash TEXT, -- Armazena o hash do PIN
+            biometric_enabled BOOLEAN NOT NULL
           )
         ''');
 
@@ -63,6 +66,76 @@ class DataBaseHelper {
         ''');
       },
     );
+  }
+
+  Future<bool> validateIdentifier(String email) async {
+    final db = await database;
+    final result = await db.query(
+      'User_data',
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+    return result.isNotEmpty;
+  }
+
+  Future<bool> validatePin(String email, String pin) async {
+    final db = await database;
+    final result = await db.query(
+      'User_data',
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+    if (result.isEmpty) return false;
+
+    final storedPinHash = result.first['pin_hash'] as String?;
+    if (storedPinHash == null) return false;
+
+    final inputPinHash = _hashPin(pin);
+    return storedPinHash == inputPinHash;
+  }
+
+  String _hashPin(String pin) {
+    final bytes = utf8.encode(pin);
+    return sha256.convert(bytes).toString();
+  }
+
+  Future<bool> isUserRegistered() async {
+    final db = await database;
+    final result = await db.query('User_data');
+    return result.isNotEmpty;
+  }
+
+  Future<void> registerUser(String email, String pin, bool biometric) async {
+    final db = await database;
+    final pinHash = pin.isNotEmpty ? _hashPin(pin) : null;
+    await db.insert('User_data', {
+      'email': email,
+      'pin_hash': pinHash,
+      'biometric_enabled': biometric ? 1 : 0,
+    });
+    print('Usuário registrado: email=$email, biometric=${biometric ? 1 : 0}');
+  }
+
+  Future<bool> isBiometricEnabled(String email) async {
+    try {
+      final db = await database;
+      final result = await db.query(
+        'User_data',
+        where: 'email = ?',
+        whereArgs: [email],
+      );
+      print('User_data query result: $result');
+      if (result.isNotEmpty) {
+        final biometricEnabled = result.first['biometric_enabled'] == 1;
+        print('Biometria habilitada no banco: $biometricEnabled');
+        return biometricEnabled;
+      }
+      print('Nenhum usuário registrado');
+      return false;
+    } catch (e) {
+      print('Erro ao verificar biometria no banco: $e');
+      return false;
+    }
   }
 
   Future<void> createDossier(String dossierName) async {
