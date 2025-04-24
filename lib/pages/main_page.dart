@@ -1,54 +1,61 @@
-import 'package:DigiDoc/screens/dossiers.dart';
 import 'package:flutter/material.dart';
-import 'package:DigiDoc/constants/color_app.dart';
+import '../constants/color_app.dart';
+import '../screens/dossiers.dart';
 
-class MyHomePage extends StatelessWidget {
+class MyHomePage extends StatefulWidget {
+  const MyHomePage({super.key, required this.title});
   final String title;
 
-  const MyHomePage({super.key, required this.title});
+  @override
+  State<MyHomePage> createState() => _MyHomePageState();
+}
+
+class _MyHomePageState extends State<MyHomePage> {
+  int _selectedIndex = 1;
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> _screens = [
+      Center(child: Text("Definições", style: TextStyle(fontSize: 20))),
+      DossiersScreen(),
+      Center(child: Text("Alertas", style: TextStyle(fontSize: 20))),
+    ];
+    final List<String> _titles = [
+      "Definições",
+      "Os meus dossiers",
+      "Alertas",
+    ];
+
     return Scaffold(
-      backgroundColor: AppColors.darkerBlue,
       appBar: AppBar(
-        title: Text(title, style: const TextStyle(color: Colors.white)),
         backgroundColor: AppColors.darkerBlue,
-        elevation: 0,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Bem-vindo ao DigiDoc!',
-              style: TextStyle(color: Colors.white, fontSize: 24),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DossiersScreen(),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.calmWhite,
-                foregroundColor: AppColors.darkerBlue,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text(
-                'Gerenciar Passkeys',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
+        title: Text(
+          _titles[_selectedIndex],
+          style: const TextStyle(color: Colors.white),
         ),
+      ),
+      body: _screens[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: "Definições",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.folder_shared),
+            label: "Dossiers",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.notifications),
+            label: "Alertas",
+          ),
+        ],
       ),
     );
   }
