@@ -561,7 +561,7 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
                 onPressed: _closeImage,
                 icon: const Icon(Icons.close, size: 20, color: Colors.white),
                 style: IconButton.styleFrom(
-                  backgroundColor: Colors.black.withOpacity(0.5),
+                  backgroundColor: Colors.black.withAlpha(50),
                 ),
               ),
             ),
@@ -601,7 +601,7 @@ class CornersPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Draw lines connecting corners (visual aid)
     final paint = Paint()
-      ..color = Colors.black87
+      ..color = Colors.red.withAlpha(50)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
@@ -618,12 +618,39 @@ class CornersPainter extends CustomPainter {
     for (int i = 0; i < corners.length; i++) {
       final corner = corners[i];
       final circlePaint = Paint()
-        ..color = i == activeCornerIndex ? Colors.blue.withAlpha(40) : Colors.black87
+        ..color = i == activeCornerIndex ? Colors.blue : Colors.red
         ..style = PaintingStyle.fill;
 
-      final radius = (i == activeCornerIndex ? 60.0 : 10.0).toDouble();
+      final radius = (i == activeCornerIndex ? 12.0 : 10.0).toDouble();
       canvas.drawCircle(corner, radius, circlePaint);
 
+      final borderPaint = Paint()
+        ..color = Colors.white
+        ..strokeWidth = 2
+        ..style = PaintingStyle.stroke;
+      canvas.drawCircle(corner, radius, borderPaint);
+    }
+
+    // Draw polygon center indicator when dragging polygon
+    if (isDraggingPolygon) {
+      final centerX = corners.map((c) => c.dx).reduce((a, b) => a + b) / 4;
+      final centerY = corners.map((c) => c.dy).reduce((a, b) => a + b) / 4;
+      final center = Offset(centerX, centerY);
+      canvas.drawCircle(
+        center,
+        10.0,
+        Paint()
+          ..color = Colors.blue
+          ..style = PaintingStyle.fill,
+      );
+      canvas.drawCircle(
+        center,
+        10.0,
+        Paint()
+          ..color = Colors.white
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke,
+      );
     }
 
     // Draw magnifier only when dragging a corner
@@ -702,8 +729,16 @@ class CornersPainter extends CustomPainter {
         relativePos,
         7.0,
         Paint()
-          ..color = Colors.black
+          ..color = Colors.blue
           ..style = PaintingStyle.fill,
+      );
+      canvas.drawCircle(
+        relativePos,
+        7.0,
+        Paint()
+          ..color = Colors.white
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke,
       );
     }
   }
