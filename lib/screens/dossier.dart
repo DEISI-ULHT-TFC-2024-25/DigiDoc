@@ -1,5 +1,8 @@
 import 'package:DigiDoc/screens/capture_document_photo.dart';
 import 'package:DigiDoc/screens/upload_document.dart';
+
+import 'package:flutter/cupertino.dart';
+
 import 'package:flutter/material.dart';
 import '../models/DataBaseHelper.dart';
 import '../constants/color_app.dart';
