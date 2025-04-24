@@ -1,3 +1,4 @@
+
 import 'package:flutter/foundation.dart';
 
 class CurrentStateProcessing extends ChangeNotifier {
@@ -30,3 +31,4 @@ class CurrentStateProcessing extends ChangeNotifier {
     }
   }
 }
+

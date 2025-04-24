@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as imge;
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import '../constants/color_app.dart';
 import '../services/CatchDocument.dart';
 import '../services/CurrentStateProcessing.dart';
 
@@ -294,6 +295,33 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
     });
   }
 
+  }
+
+  void _onPanStart(DragStartDetails details) {
+    final position = details.localPosition;
+    final closestCornerIndex = _findClosestCornerIndex(position);
+    final isInside = _isInsidePolygon(position);
+
+    setState(() {
+      if (closestCornerIndex != null) {
+        _activeCornerIndex = closestCornerIndex;
+        _isDraggingPolygon = false;
+        _magnifierPosition = position;
+      } else if (isInside) {
+        _activeCornerIndex = null;
+        _isDraggingPolygon = true;
+        _dragStartPosition = position;
+        _magnifierPosition = null; // Não mostrar lupa ao arrastar polígono
+      } else {
+        _activeCornerIndex = null;
+        _isDraggingPolygon = false;
+        _magnifierPosition = null;
+      }
+      print(
+          'Pan Start: Corner=$_activeCornerIndex, DraggingPolygon=$_isDraggingPolygon, Position=$position');
+    });
+  }
+
   void _onPanUpdate(DragUpdateDetails details) {
     final position = details.localPosition;
     final screenSize = MediaQuery.of(context).size;
@@ -353,6 +381,63 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
           'Crop Skipped: OriginalImage=${_originalImage != null}, CatchDoc=${_catchDoc != null}, CatchDocOriginalImage=${_catchDoc?.originalImage != null}');
       return;
     }
+
+    state.setInternalProcessing(true);
+
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width.toDouble();
+    final screenHeight = (screenSize.height * 0.8).toDouble();
+    final imageWidth = _catchDoc!.originalImage!.width.toDouble();
+    final imageHeight = _catchDoc!.originalImage!.height.toDouble();
+
+    final aspectRatio = imageWidth / imageHeight;
+    final displayWidth = (aspectRatio > screenWidth / screenHeight
+        ? screenWidth
+        : screenHeight * aspectRatio)
+        .toDouble();
+    final displayHeight = (aspectRatio > screenWidth / screenHeight
+        ? screenWidth / aspectRatio
+        : screenHeight)
+        .toDouble();
+    final offsetX = ((screenWidth - displayWidth) / 2).toDouble();
+    final offsetY = ((screenHeight - displayHeight) / 2).toDouble();
+
+    final scale = (imageWidth / displayWidth).toDouble();
+
+    // Convert corners to image space
+    final corners = _corners.map((corner) {
+      final x = ((corner.dx - offsetX) * scale).toDouble();
+      final y = ((corner.dy - offsetY) * scale).toDouble();
+      return [
+        x.clamp(0.0, imageWidth - 1),
+        y.clamp(0.0, imageHeight - 1),
+      ];
+    }).toList();
+
+    // Validate corners
+    if (corners.any((corner) => corner[0].isNaN || corner[1].isNaN || corner[0] < 0 || corner[1] < 0)) {
+      state.setInternalProcessing(false);
+      state.setCorrecting(false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cantos inválidos para recorte')),
+      );
+      print('Crop Failed: Invalid Corners=$corners');
+      return;
+    }
+
+    // Order corners: top-left, top-right, bottom-right, bottom-left
+    final orderedCorners = [
+      corners[0], // Top-left
+      corners[1], // Top-right
+      corners[2], // Bottom-right
+      corners[3], // Bottom-left
+    ];
+
+    print('Applying Crop: Corners=$orderedCorners, ImageSize=${imageWidth}x$imageHeight');
+
+    try {
+      final correctedImage = await _catchDoc!.cropWithCorners(orderedCorners);
+
 
     state.setInternalProcessing(true);
 
@@ -538,6 +623,10 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.blue,
                           foregroundColor: Colors.white,
+                        label: const Text('Recortar'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.lighterBlue,
+                          foregroundColor: AppColors.calmWhite,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -548,6 +637,7 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.grey,
                           foregroundColor: Colors.white,
+                          foregroundColor: AppColors.calmWhite,
                         ),
                       ),
                     ],

@@ -60,30 +60,3 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
-
-class RectangleOverlayPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Color.fromARGB(100, 0, 0, 0)
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
-
-    final rect = Rect.fromLTRB(
-      size.width * 0.05,
-      size.height * 0.02,
-      size.width * 0.95,
-      size.height * 0.77,
-    );
-
-    final rrect = RRect.fromRectAndRadius(
-      rect,
-      Radius.circular(20),
-    );
-
-    canvas.drawRRect(rrect, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
