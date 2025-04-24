@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Autenticação com Face ID para maior segurança</string>
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+      <string>webcredentials:pro-8267538130212783080.frontendapi.cloud.corbado.io</string>
+    </array>
+    <key>NSFaceIDUsageDescription</key>
+    <string>Precisamos de autenticação biométrica para maior segurança</string>
     <key>NSCameraUsageDescription</key>
     <string>Precisamos de acesso à câmera para capturar imagens.</string>
     <key>NSPhotoLibraryUsageDescription</key>
