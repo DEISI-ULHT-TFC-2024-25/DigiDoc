@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:DigiDoc/models/DataBaseHelper.dart';
-import '../screens/custom_notification.dart';
+import 'package:DigiDoc/services/notification_service.dart';
 
 void startAlertChecker(GlobalKey<NavigatorState> navigatorKey) {
   Timer.periodic(const Duration(seconds: 1), (timer) async {
@@ -13,38 +13,45 @@ void startAlertChecker(GlobalKey<NavigatorState> navigatorKey) {
 
       for (var alert in alerts) {
         final alertDate = DateTime.parse(alert['date'] as String);
-        final alertId = alert['id'] as int;
+        final alertId = alert['alert_id'] as int;
         final alertName = alert['name'] as String;
 
-        // Check if alert is due (within 1 second)
+        // Verificar se o alerta está vencido (dentro de 1 segundo)
         if (alertDate.difference(now).inSeconds.abs() <= 1) {
-          await showNotification(
-            alertId,
-            'Prazo do Documento',
-            alertName,
-            '/alerts',
+          print('AlertChecker: Disparando notificação imediata para alerta $alertId');
+          await showImmediateNotification(
+            id: alertId,
+            title: 'Prazo do Documento',
+            body: alertName,
+            payload: '/alerts',
           );
 
-          // Deactivate alert after triggering
+          // Desativar alerta após disparo
           await db.update(
             'Alert',
             {'is_active': 0},
-            where: 'id = ?',
+            where: 'alert_id = ?',
             whereArgs: [alertId],
           );
+          print('AlertChecker: Alerta $alertId desativado após notificação');
         }
 
-        // Check for 7-day reminder
+        // Verificar lembrete de 7 dias
         final reminderDate = alertDate.subtract(const Duration(days: 7));
         if (reminderDate.difference(now).inSeconds.abs() <= 1) {
-          await showNotification(
-            alertId + 1000,
-            'Lembrete: Prazo do Documento',
-            'Lembrete: $alertName',
-            '/alerts',
+          print('AlertChecker: Disparando lembrete de 7 dias para alerta $alertId');
+          await showImmediateNotification(
+            id: alertId + 1000,
+            title: 'Lembrete: Prazo do Documento',
+            body: 'Lembrete: $alertName',
+            payload: '/alerts',
           );
+          print('AlertChecker: Lembrete de 7 dias disparado para alerta $alertId');
         }
       }
-    } catch (e) {}
+    } catch (e, stackTrace) {
+      print('AlertChecker: Erro ao verificar alertas: $e');
+      print('AlertChecker: Stack trace: $stackTrace');
+    }
   });
 }

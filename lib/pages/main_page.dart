@@ -7,7 +7,7 @@ import '../screens/alerts.dart' as alerts;
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.camera});
   final String title;
-  final CameraDescription camera;
+  final CameraDescription? camera; // Alterado para CameraDescription?
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -20,8 +20,10 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> _screens = [
-      DossiersScreen(camera: widget.camera),
-      alerts.AlertsScreen(key: _alertsScreenKey), // Use o alias
+      widget.camera == null
+          ? const Center(child: Text('Nenhuma câmera disponível'))
+          : DossiersScreen(camera: widget.camera!), // Passar camera não nulo
+      alerts.AlertsScreen(key: _alertsScreenKey),
     ];
     final List<String> _titles = [
       "Os meus dossiers",

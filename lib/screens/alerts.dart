@@ -120,7 +120,11 @@ class AlertsScreenState extends State<AlertsScreen> {
       }
 
       await loadAlerts();
-      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Alerta ${isActive ? 'ativado' : 'desativado'} com sucesso')),
+        );
+      }
     } catch (e) {
       print('AlertsScreen: Erro ao atualizar alerta: $e');
       if (mounted) {

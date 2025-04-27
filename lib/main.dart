@@ -12,7 +12,7 @@ import 'package:DigiDoc/services/CurrentStateProcessing.dart';
 import 'package:DigiDoc/constants/color_app.dart';
 import 'package:DigiDoc/screens/alerts.dart';
 import 'services/notification_service.dart';
-
+import 'services/alert_checker.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -26,10 +26,18 @@ Future<void> main() async {
   // Inicializar notificações
   await initNotifications(navigatorKey);
 
+  // Disparar notificação de teste
+  await testNotification();
+
   // Solicitar permissões no Android
   if (Platform.isAndroid) {
     await Permission.camera.request();
-    await Permission.notification.request();
+    final notificationStatus = await Permission.notification.request();
+    print('Main: Status da permissão de notificação: $notificationStatus');
+    if (notificationStatus.isDenied || notificationStatus.isPermanentlyDenied) {
+      print('Main: Permissão de notificação negada, solicitando novamente');
+      await openAppSettings();
+    }
     await Permission.scheduleExactAlarm.request();
   }
 
@@ -40,18 +48,21 @@ Future<void> main() async {
   final dbHelper = DataBaseHelper.instance;
   await dbHelper.getDossiers();
 
+  // Iniciar verificação de alertas
+  startAlertChecker(navigatorKey);
+
   runApp(
     ChangeNotifierProvider(
       create: (context) => CurrentStateProcessing(),
       child: MyApp(
-        camera: firstCamera!,
+        camera: firstCamera,
       ),
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  final CameraDescription camera;
+  final CameraDescription? camera;
 
   const MyApp({
     Key? key,
@@ -61,7 +72,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      navigatorKey: navigatorKey, // Usar a chave global definida
+      navigatorKey: navigatorKey,
       title: 'DigiDoc',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.darkerBlue),

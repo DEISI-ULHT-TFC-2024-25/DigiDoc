@@ -1,4 +1,3 @@
-// screens/document_viewer.dart
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -30,9 +29,9 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
   bool _isLoading = true;
   Uint8List? _decryptedPdfData;
 
-  // Chave AES (deve ser a mesma usada no InfoConfirmationScreen)
-  static final _aesKey = encrypt.Key.fromUtf8('16bytessecretkey'); // 16, 24 ou 32 bytes
-  static final _aesIv = encrypt.IV.fromLength(16);
+  // Chave AES (deve corresponder à usada no InfoConfirmationScreen)
+  static final _aesKey = encrypt.Key.fromUtf8('16bytessecretkey');
+  static final _aesIv = encrypt.IV.fromUtf8('16bytesiv1234567'); // Atualizado para corresponder ao IV
 
   @override
   void initState() {
@@ -53,15 +52,6 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
         throw Exception('fileDataPrint muito pequeno para descriptografia AES (${widget.fileDataPrint.length} bytes)');
       }
 
-      // Verificar se fileDataPrint parece ser um PDF encriptado
-      print('DocumentViewerScreen: Primeiros 16 bytes do fileDataPrint: ${widget.fileDataPrint.sublist(0, widget.fileDataPrint.length < 16 ? widget.fileDataPrint.length : 16)}');
-
-      // Salvar fileDataPrint para inspeção manual
-      final tempDir = await getTemporaryDirectory();
-      final encryptedFile = File('${tempDir.path}/encrypted_document_${widget.documentId}.bin');
-      await encryptedFile.writeAsBytes(widget.fileDataPrint);
-      print('DocumentViewerScreen: fileDataPrint salvo em ${encryptedFile.path}');
-
       // Descriptografar o PDF
       final encrypter = encrypt.Encrypter(encrypt.AES(_aesKey, mode: encrypt.AESMode.cbc));
       final encrypted = encrypt.Encrypted(widget.fileDataPrint);
@@ -74,13 +64,14 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
         final header = String.fromCharCodes(_decryptedPdfData!.sublist(0, 5));
         print('DocumentViewerScreen: Cabeçalho do PDF descriptografado: $header');
         if (!header.startsWith('%PDF-')) {
-          print('DocumentViewerScreen: Aviso: O arquivo descriptografado não parece ser um PDF válido');
+          throw Exception('Arquivo descriptografado não é um PDF válido (cabeçalho: $header)');
         }
       } else {
         throw Exception('PDF descriptografado muito pequeno (${_decryptedPdfData!.length} bytes)');
       }
 
       // Salvar o PDF descriptografado como arquivo temporário
+      final tempDir = await getTemporaryDirectory();
       final file = File('${tempDir.path}/document_${widget.documentId}.pdf');
       await file.writeAsBytes(_decryptedPdfData!);
       print('DocumentViewerScreen: PDF descriptografado salvo em ${file.path}');
@@ -92,7 +83,6 @@ class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
     } catch (e, stackTrace) {
       print('DocumentViewerScreen: Erro ao descriptografar ou salvar PDF: $e');
       print('Stack trace: $stackTrace');
-      // Atrasar o SnackBar para evitar erro de dependência
       Future.microtask(() {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
