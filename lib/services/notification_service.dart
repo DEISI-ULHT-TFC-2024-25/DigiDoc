@@ -129,38 +129,6 @@ Future<void> cancelNotification(int id) async {
   }
 }
 
-Future<void> testNotification() async {
-  print('NotificationService: Disparando notificação de teste');
-  const AndroidNotificationDetails androidPlatformChannelSpecifics = AndroidNotificationDetails(
-    'digidoc_alerts',
-    'DigiDoc Alerts',
-    channelDescription: 'Notificações de alertas do DigiDoc',
-    importance: Importance.max,
-    priority: Priority.high,
-    showWhen: true,
-    enableVibration: true,
-    playSound: true,
-  );
-
-  const NotificationDetails platformChannelSpecifics = NotificationDetails(
-    android: androidPlatformChannelSpecifics,
-  );
-
-  try {
-    await flutterLocalNotificationsPlugin.show(
-      0,
-      'Teste de Notificação',
-      'Esta é uma notificação de teste do DigiDoc',
-      platformChannelSpecifics,
-      payload: 'test',
-    );
-    print('NotificationService: Notificação de teste disparada com sucesso');
-  } catch (e, stackTrace) {
-    print('NotificationService: Erro ao disparar notificação de teste: $e');
-    print('NotificationService: Stack trace: $stackTrace');
-  }
-}
-
 Future<void> rescheduleActiveNotifications() async {
   print('NotificationService: Reagendando notificações ativas');
   try {

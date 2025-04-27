@@ -1,4 +1,3 @@
-// DataBaseHelper.dart
 import 'dart:typed_data';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
@@ -23,7 +22,7 @@ class DataBaseHelper {
     String path = join(await getDatabasesPath(), 'digidoc.db');
     return await openDatabase(
       path,
-      version: 8, // Incrementado para nova migração
+      version: 9, // Incrementado para nova migração (era 8)
       onCreate: (db, version) async {
         await db.execute('PRAGMA foreign_keys = ON;');
 
@@ -31,6 +30,7 @@ class DataBaseHelper {
         CREATE TABLE Document (
           document_id INTEGER PRIMARY KEY AUTOINCREMENT,
           document_type_name TEXT NOT NULL,
+          document_name TEXT NOT NULL,
           file_data BLOB NOT NULL,
           file_data_print BLOB NOT NULL,
           extracted_texts TEXT,
@@ -124,7 +124,6 @@ class DataBaseHelper {
           }
         }
         if (oldVersion < 8) {
-          // Adicionar verificação adicional para integridade
           final invalidDocs = await db.rawQuery('''
             SELECT document_id FROM Document 
             WHERE dossier_id NOT IN (SELECT dossier_id FROM Dossier)
@@ -135,6 +134,22 @@ class DataBaseHelper {
               await db.delete('Document', where: 'document_id = ?', whereArgs: [doc['document_id']]);
             }
             print('Documentos inválidos removidos');
+          }
+        }
+        if (oldVersion < 9) {
+          // Adicionar coluna document_name à tabela Document
+          final docColumns = await db.rawQuery('PRAGMA table_info(Document)');
+          bool hasDocumentName = docColumns.any((column) => column['name'] == 'document_name');
+          if (!hasDocumentName) {
+            await db.execute('ALTER TABLE Document ADD COLUMN document_name TEXT NOT NULL DEFAULT "Sem Nome"');
+            print('Coluna document_name adicionada à tabela Document');
+            // Atualizar documentos existentes com um valor padrão baseado em document_type_name
+            await db.execute('''
+              UPDATE Document 
+              SET document_name = document_type_name 
+              WHERE document_name IS NULL OR document_name = ''
+            ''');
+            print('Valores padrão para document_name definidos');
           }
         }
       },
@@ -257,12 +272,13 @@ class DataBaseHelper {
     if (id <= 0) {
       throw Exception('Falha ao criar dossiê: ID inválido gerado ($id)');
     }
-    print('Dossiê inserido com ID: $id');
+    print('Dossier inserido com ID: $id');
     return id;
   }
 
   Future<int> insertDocument(
       String documentTypeName,
+      String documentName,
       Uint8List fileData,
       Uint8List fileDataPrint,
       String extractedText,
@@ -281,6 +297,7 @@ class DataBaseHelper {
     }
     final document = {
       'document_type_name': documentTypeName,
+      'document_name': documentName,
       'file_data': fileData,
       'file_data_print': fileDataPrint,
       'extracted_texts': extractedText,
@@ -327,6 +344,7 @@ class DataBaseHelper {
         columns: [
           'document_id',
           'document_type_name',
+          'document_name',
           'created_at',
           'file_data',
           'file_data_print',
@@ -375,6 +393,7 @@ class DataBaseHelper {
         a.is_active,
         a.document_id,
         d.document_type_name,
+        d.document_name,
         d.file_data
       FROM Alert a
       LEFT JOIN Document d ON a.document_id = d.document_id
@@ -383,7 +402,8 @@ class DataBaseHelper {
       for (var alert in result) {
         print('Alerta: alert_id=${alert['alert_id']}, description=${alert['description']}, '
             'date=${alert['date']}, is_active=${alert['is_active']}, '
-            'document_id=${alert['document_id']}, document_type_name=${alert['document_type_name']}');
+            'document_id=${alert['document_id']}, document_type_name=${alert['document_type_name']}, '
+            'document_name=${alert['document_name']}');
       }
       return result;
     } catch (e, stackTrace) {
@@ -424,6 +444,7 @@ class DataBaseHelper {
         SELECT DISTINCT 
           Document.document_id,
           Document.document_type_name,
+          Document.document_name,
           Document.extracted_texts,
           Document.created_at,
           Document.dossier_id
@@ -475,7 +496,7 @@ class DataBaseHelper {
     print('Dossiês no banco: $dossiers');
     final documents = await db.query(
       'Document',
-      columns: ['document_id', 'document_type_name', 'created_at', 'dossier_id'],
+      columns: ['document_id', 'document_type_name', 'document_name', 'created_at', 'dossier_id'],
     );
     print('Documentos no banco: $documents');
     final alerts = await db.query('Alert');

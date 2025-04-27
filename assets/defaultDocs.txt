@@ -1,10 +1,10 @@
-Cartão de Cidadão:cartao,cidadao,citizen,card,identity;dd mm yyyy,validade
-Passaporte:passport,pc,passaporte;dd.mm.yyyy,validade
-Cartão de Condução:carta,conducao,driving,licenca;dd.mm.yy,validade de categoria
-Título de Residência:titulo,residencia,estrangeiro,permisso,resid;dd.mm.yyyy,validade
-Número de Identificação Fiscal (folha):nif,fiscal,identificacao,tributaria;dd/mm/yyyy,validade
-Cartão de Número de Identificação Fiscal:cartao,nif,fiscal,card;dd/mm/yyyy,validade
-Segurança Social (folha):seguranca,social,ss,beneficiario;dd mm yyyy,validade
-Cartão de Segurança Social:cartao,seguranca,social,card;dd mm yyyy,validade
-Utente do SNS (folha):utente,sns,saude,servico;dd.mm.yyyy,validade
-Cartão de Utente do SNS:cartao,utente,sns,saude,card;dd.mm.yyyy,validade
+Cartão de Cidadão:cartao,cidadao,citizen,card,identity;dd mm yyyy,Validade do Cartão de Cidadão
+Passaporte:passport,pc,passaporte;dd.mm.yyyy,Validade do Passaporte
+Cartão de Condução:carta,conducao,driving,licenca;dd.mm.yy,Validade do Categoria
+Título de Residência:titulo,residencia,estrangeiro,permisso,resid;dd.mm.yyyy,Validade do Título de Residência
+Número de Identificação Fiscal (folha):nif,fiscal,identificacao,tributaria;dd/mm/yyyy,Validade do NIF
+Cartão de Número de Identificação Fiscal:cartao,nif,fiscal,card;dd/mm/yyyy,Validade do NIF
+Segurança Social (folha):seguranca,social,ss,beneficiario;dd mm yyyy,Validade de Segurança Social
+Cartão de Segurança Social:cartao,seguranca,social,card;dd mm yyyy,Validade do Cartão de Segurança Social
+Utente do SNS (folha):utente,sns,saude,servico;dd.mm.yyyy,Validade do SNS
+Cartão de Utente do SNS:cartao,utente,sns,saude,card;dd.mm.yyyy,Validade do Cartão de Utente SNS

@@ -16,10 +16,12 @@ import '../models/DataBaseHelper.dart';
 class InfoConfirmationScreen extends StatefulWidget {
   final List<XFile> imagesList;
   final int dossierId;
+  final String dossierName;
 
   const InfoConfirmationScreen({
     required this.imagesList,
     required this.dossierId,
+    required this.dossierName,
     super.key,
   });
 
@@ -121,7 +123,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
             name: name,
             keywords: keywords,
             dateStructure: dateStructure,
-            alertDescription: alertDescription,
+            alertDescription: "${alertDescription} de ${widget.dossierName}",
           );
         } catch (e) {
           print('Erro ao processar linha de defaultDocs.txt: $e');
@@ -633,6 +635,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
 
       final documentId = await DataBaseHelper.instance.insertDocument(
         selectedDocType!,
+        "${selectedDocType!} de ${widget.dossierName}" ,
         fileData,
         encryptedPdfData,
         extractedText,

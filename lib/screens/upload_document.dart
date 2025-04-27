@@ -9,8 +9,9 @@ import 'info_confirmation.dart';
 
 class UploadDocumentScreen extends StatefulWidget {
   final int dossierId;
+  final String dossierName;
 
-  const UploadDocumentScreen({Key? key, required this.dossierId}) : super(key: key);
+  const UploadDocumentScreen({Key? key, required this.dossierId, required this.dossierName}) : super(key: key);
 
   @override
   _UploadDocumentScreenState createState() => _UploadDocumentScreenState();
@@ -87,6 +88,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
           builder: (context) => InfoConfirmationScreen(
             imagesList: _uploadedDocuments.map((file) => XFile(file.path)).toList(),
             dossierId: widget.dossierId,
+            dossierName: widget.dossierName,
           ),
         ),
       );

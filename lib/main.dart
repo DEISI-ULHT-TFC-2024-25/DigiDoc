@@ -26,9 +26,6 @@ Future<void> main() async {
   // Inicializar notificações
   await initNotifications(navigatorKey);
 
-  // Disparar notificação de teste
-  await testNotification();
-
   // Solicitar permissões no Android
   if (Platform.isAndroid) {
     await Permission.camera.request();

@@ -7,7 +7,6 @@ import '../constants/color_app.dart';
 import '../models/DataBaseHelper.dart';
 import 'capture_document_photo.dart';
 import 'upload_document.dart';
-import 'info_confirmation.dart';
 import 'document_viewer.dart'; // Novo import
 
 class DossierScreen extends StatefulWidget {
@@ -146,7 +145,7 @@ class _DossierScreenState extends State<DossierScreen> {
       final db = await DataBaseHelper.instance.database;
       await db.update(
         'Document',
-        {'document_type_name': result},
+        {'document_name': result},
         where: 'document_id = ?',
         whereArgs: [documentId],
       );
@@ -218,8 +217,8 @@ class _DossierScreenState extends State<DossierScreen> {
                 itemCount: documents.length,
                 itemBuilder: (context, index) {
                   final doc = documents[index];
-                  final docTypeName = doc['document_type_name'] as String? ?? 'Sem Nome';
-                  final docName = '$docTypeName - ${widget.dossierName}';
+                  final docTypeName = doc['document_type_name'] as String? ?? 'Não Definido';
+                  final docName = doc['document_name'] as String? ?? 'Sem Nome';
                   final createdAt = doc['created_at'] != null
                       ? DateFormat('dd/MM/yyyy', 'pt_PT')
                       .format(DateTime.parse(doc['created_at']))
@@ -283,20 +282,7 @@ class _DossierScreenState extends State<DossierScreen> {
                                 children: [
                                   Row(
                                     children: [
-                                      FutureBuilder<Color>(
-                                        future: _getDocumentStatusColor(doc['document_id']),
-                                        builder: (context, snapshot) {
-                                          return Container(
-                                            width: 12,
-                                            height: 12,
-                                            margin: const EdgeInsets.only(right: 8),
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: snapshot.data ?? Colors.grey,
-                                            ),
-                                          );
-                                        },
-                                      ),
+
                                       Expanded(
                                         child: Text(
                                           docName,
@@ -319,6 +305,24 @@ class _DossierScreenState extends State<DossierScreen> {
                                       color: Colors.grey,
                                     ),
                                   ),
+
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      FutureBuilder<Color>(
+                                        future: _getDocumentStatusColor(doc['document_id']),
+                                        builder: (context, snapshot) {
+                                          return Container(
+                                            width: 12,
+                                            height: 12,
+                                            margin: const EdgeInsets.only(right: 8),
+                                            child: snapshot.data != null ? Icon(Icons.notifications_active) : Icon(Icons.notifications_off),
+                                          );
+                                        },
+                                      ),
+
+                                    ],
+                                  ),
                                   const SizedBox(height: 4),
                                   Row(
                                     mainAxisAlignment: MainAxisAlignment.end,
@@ -330,7 +334,7 @@ class _DossierScreenState extends State<DossierScreen> {
                                           color: AppColors.darkerBlue,
                                         ),
                                         onPressed: () => _editDocumentName(
-                                            doc['document_id'], docTypeName),
+                                            doc['document_id'], docName),
                                       ),
                                       IconButton(
                                         icon: const Icon(
@@ -376,6 +380,7 @@ class _DossierScreenState extends State<DossierScreen> {
                     MaterialPageRoute(
                       builder: (context) => UploadDocumentScreen(
                         dossierId: widget.dossierId,
+                        dossierName: widget.dossierName,
                       ),
                     ),
                   ).then((_) {
@@ -404,6 +409,7 @@ class _DossierScreenState extends State<DossierScreen> {
                     MaterialPageRoute(
                       builder: (context) => CaptureDocumentPhotoScreen(
                         dossierId: widget.dossierId,
+                        dossierName: widget.dossierName,
                         camera: widget.camera,
                       ),
                     ),

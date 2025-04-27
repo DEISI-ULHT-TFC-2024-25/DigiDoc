@@ -9,11 +9,13 @@ import 'info_confirmation.dart';
 
 class CaptureDocumentPhotoScreen extends StatefulWidget {
   final int dossierId;
+  final String dossierName;
   final CameraDescription camera;
 
   const CaptureDocumentPhotoScreen({
     Key? key,
     required this.dossierId,
+    required this.dossierName,
     required this.camera,
   }) : super(key: key);
 
@@ -245,6 +247,7 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
                                 builder: (context) => InfoConfirmationScreen(
                                   imagesList: _capturedImages,
                                   dossierId: widget.dossierId,
+                                  dossierName: widget.dossierName,
                                 ),
                               ),
                             );
