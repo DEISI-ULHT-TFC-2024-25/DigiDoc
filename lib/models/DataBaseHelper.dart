@@ -466,7 +466,7 @@ class DataBaseHelper {
       where: 'dossier_id IS NULL OR dossier_id = 0',
       columns: ['document_id', 'dossier_id'],
     );
-    print('Documentos com dossierId nulo: $nullDocuments');
+    print('Documentos com dossierId nulo ou zero: $nullDocuments');
     final dossiers = await db.query('Dossier');
     print('Dossiês no banco: $dossiers');
     final documents = await db.query(

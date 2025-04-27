@@ -9,8 +9,13 @@ import 'info_confirmation.dart';
 
 class CaptureDocumentPhotoScreen extends StatefulWidget {
   final int dossierId;
+  final CameraDescription camera;
 
-  const CaptureDocumentPhotoScreen({Key? key, required this.dossierId}) : super(key: key);
+  const CaptureDocumentPhotoScreen({
+    Key? key,
+    required this.dossierId,
+    required this.camera,
+  }) : super(key: key);
 
   @override
   _CaptureDocumentPhotoScreenState createState() => _CaptureDocumentPhotoScreenState();
@@ -18,7 +23,6 @@ class CaptureDocumentPhotoScreen extends StatefulWidget {
 
 class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen> {
   CameraController? _cameraController;
-  List<CameraDescription> _cameras = [];
   List<XFile> _capturedImages = [];
   bool _isCameraInitialized = false;
   File? _imgJustCaptured;
@@ -42,22 +46,15 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
 
   Future<void> _initializeCamera() async {
     try {
-      _cameras = await availableCameras();
-      if (_cameras.isNotEmpty) {
-        _cameraController = CameraController(
-          _cameras[0],
-          ResolutionPreset.max,
-          enableAudio: false,
-        );
-        await _cameraController!.initialize();
-        setState(() {
-          _isCameraInitialized = true;
-        });
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Nenhuma câmera disponível')),
-        );
-      }
+      _cameraController = CameraController(
+        widget.camera,
+        ResolutionPreset.max,
+        enableAudio: false,
+      );
+      await _cameraController!.initialize();
+      setState(() {
+        _isCameraInitialized = true;
+      });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao inicializar câmera: $e')),

@@ -3,11 +3,13 @@ import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:DigiDoc/screens/capture_document_photo.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../constants/color_app.dart';
 import '../models/DataBaseHelper.dart';
 import '../widgets/DocumentImageViewer.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+
 import 'info_confirmation.dart';
 
 class DossierScreen extends StatefulWidget {
@@ -187,16 +189,16 @@ class _DossierScreenState extends State<DossierScreen> {
     }
   }
 
-  Future<void> _uploadDocumentFromGallery() async {
+  Future<void> _uploadDocument() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
-      final xFile = XFile(pickedFile.path);
+      final file = File(pickedFile.path);
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => InfoConfirmationScreen(
-            imagesList: [xFile],
+            imagesList: [XFile(file.path)],
             dossierId: widget.dossierId,
           ),
         ),
@@ -241,13 +243,15 @@ class _DossierScreenState extends State<DossierScreen> {
                   final docTypeName = doc['document_type_name'] as String? ?? 'Sem Nome';
                   final docName = '$docTypeName - ${widget.dossierName}';
                   final createdAt = doc['created_at'] != null
-                      ? DateFormat('dd/MM/yyyy', 'pt_PT').format(DateTime.parse(doc['created_at']))
+                      ? DateFormat('dd/MM/yyyy', 'pt_PT')
+                      .format(DateTime.parse(doc['created_at']))
                       : 'Sem Data';
                   final thumbnailData = doc['file_data'] as Uint8List?;
 
                   return InkWell(
                     onTap: () async {
-                      final fileData = await DataBaseHelper.instance.getDocumentFileData(doc['document_id']);
+                      final fileData = await DataBaseHelper.instance
+                          .getDocumentFileData(doc['document_id']);
                       if (fileData != null && fileData['file_data_print'] != null) {
                         Navigator.push(
                           context,
@@ -350,7 +354,8 @@ class _DossierScreenState extends State<DossierScreen> {
                                           size: 20,
                                           color: AppColors.darkerBlue,
                                         ),
-                                        onPressed: () => _editDocumentName(doc['document_id'], docTypeName),
+                                        onPressed: () => _editDocumentName(
+                                            doc['document_id'], docTypeName),
                                       ),
                                       IconButton(
                                         icon: const Icon(
@@ -358,7 +363,8 @@ class _DossierScreenState extends State<DossierScreen> {
                                           size: 20,
                                           color: Colors.red,
                                         ),
-                                        onPressed: () => _deleteDocument(doc['document_id']),
+                                        onPressed: () =>
+                                            _deleteDocument(doc['document_id']),
                                       ),
                                     ],
                                   ),
@@ -389,7 +395,7 @@ class _DossierScreenState extends State<DossierScreen> {
               ),
               FloatingActionButton(
                 heroTag: "dossier_fab_upload",
-                onPressed: _uploadDocumentFromGallery,
+                onPressed: _uploadDocument,
                 backgroundColor: AppColors.darkerBlue,
                 child: const Icon(Icons.upload_file, color: Colors.white),
               ),
@@ -411,6 +417,7 @@ class _DossierScreenState extends State<DossierScreen> {
                     MaterialPageRoute(
                       builder: (context) => CaptureDocumentPhotoScreen(
                         dossierId: widget.dossierId,
+                        camera: widget.camera,
                       ),
                     ),
                   ).then((_) {
