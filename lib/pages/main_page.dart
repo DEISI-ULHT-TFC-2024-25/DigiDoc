@@ -1,27 +1,28 @@
+import 'package:DigiDoc/main.dart';
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import '../constants/color_app.dart';
 import '../screens/dossiers.dart';
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+  const MyHomePage({super.key, required this.title, required this.camera});
   final String title;
+  final CameraDescription camera;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _selectedIndex = 1;
+  int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> _screens = [
-      Center(child: Text("Definições", style: TextStyle(fontSize: 20))),
-      DossiersScreen(),
-      Center(child: Text("Alertas", style: TextStyle(fontSize: 20))),
+      DossiersScreen(camera: widget.camera),
+      AlertsScreen(),
     ];
     final List<String> _titles = [
-      "Definições",
       "Os meus dossiers",
       "Alertas",
     ];
@@ -42,11 +43,7 @@ class _MyHomePageState extends State<MyHomePage> {
             _selectedIndex = index;
           });
         },
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: "Definições",
-          ),
+        items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.folder_shared),
             label: "Dossiers",

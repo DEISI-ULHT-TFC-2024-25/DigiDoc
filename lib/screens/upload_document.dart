@@ -1,213 +1,470 @@
+// DataBaseHelper.dart
+import 'dart:typed_data';
+import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:crypto/crypto.dart';
+import 'dart:convert';
+import 'package:diacritic/diacritic.dart';
 
-import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:provider/provider.dart';
-import '../services/CurrentStateProcessing.dart';
-import 'info_confirmation.dart';
-import '../widgets/DocumentImageViewer.dart';
+class DataBaseHelper {
+  static final DataBaseHelper instance = DataBaseHelper._internal();
+  factory DataBaseHelper() => instance;
+  DataBaseHelper._internal();
 
-class UploadDocumentScreen extends StatefulWidget {
-  @override
-  _UploadDocumentScreenState createState() => _UploadDocumentScreenState();
-}
+  static Database? _database;
 
-class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
-  File? _selectedImage;
-  List<File> _uploadedDocuments = [];
-  final ImagePicker _picker = ImagePicker();
-  final GlobalKey<DocumentImageViewerState> _viewerKey = GlobalKey<DocumentImageViewerState>();
+  Future<Database> get database async {
+    if (_database != null) return _database!;
+    _database = await _initDB();
+    return _database!;
+  }
 
-  Future<void> _uploadImage() async {
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 2000,
-      maxHeight: 2000,
-      imageQuality: 85,
+  Future<Database> _initDB() async {
+    String path = join(await getDatabasesPath(), 'digidoc.db');
+    return await openDatabase(
+      path,
+      version: 7, // Incrementado para nova migração
+      onCreate: (db, version) async {
+        await db.execute('PRAGMA foreign_keys = ON;');
+
+        await db.execute('''
+        CREATE TABLE Document (
+          document_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          document_type_name TEXT NOT NULL,
+          file_data BLOB NOT NULL,
+          file_data_print BLOB NOT NULL,
+          extracted_texts TEXT,
+          created_at DATETIME NOT NULL,
+          dossier_id INTEGER NOT NULL,
+          FOREIGN KEY (dossier_id) REFERENCES Dossier(dossier_id) ON DELETE CASCADE
+        )
+        ''');
+
+        await db.execute('''
+        CREATE TABLE User_data (
+          user_data_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          email TEXT NOT NULL UNIQUE,
+          pin_hash TEXT,
+          biometric_enabled BOOLEAN NOT NULL
+        )
+        ''');
+
+        await db.execute('''
+        CREATE TABLE Alert (
+          alert_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date DATETIME NOT NULL,
+          name TEXT NOT NULL,
+          is_active INTEGER NOT NULL DEFAULT 1,
+          document_id INTEGER,
+          FOREIGN KEY (document_id) REFERENCES Document(document_id) ON DELETE CASCADE
+        )
+        ''');
+
+        await db.execute('''
+        CREATE TABLE Dossier (
+          dossier_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          created_at DATETIME NOT NULL,
+          name TEXT NOT NULL
+        )
+        ''');
+
+        await db.execute('''
+        CREATE TABLE Image (
+          image_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          document_id INTEGER NOT NULL,
+          extracted_text TEXT,
+          FOREIGN KEY (document_id) REFERENCES Document(document_id) ON DELETE CASCADE
+        )
+        ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 3) {
+          final result = await db.rawQuery('PRAGMA table_info(Alert)');
+          bool hasIsActive = result.any((column) => column['name'] == 'is_active');
+          if (!hasIsActive) {
+            await db.execute('ALTER TABLE Alert ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1');
+            print('Coluna is_active adicionada à tabela Alert');
+          }
+        }
+        if (oldVersion < 5) {
+          final tables = await db.rawQuery(
+              'SELECT name FROM sqlite_master WHERE type="table" AND name="Image"');
+          if (tables.isEmpty) {
+            await db.execute('''
+            CREATE TABLE Image (
+              image_id INTEGER PRIMARY KEY AUTOINCREMENT,
+              document_id INTEGER NOT NULL,
+              extracted_text TEXT,
+              FOREIGN KEY (document_id) REFERENCES Document(document_id) ON DELETE CASCADE
+            )
+            ''');
+            print('Tabela Image criada');
+          }
+          final alertColumns = await db.rawQuery('PRAGMA table_info(Alert)');
+          bool hasDocumentId = alertColumns.any((column) => column['name'] == 'document_id');
+          if (!hasDocumentId) {
+            await db.execute('ALTER TABLE Alert ADD COLUMN document_id INTEGER');
+            print('Coluna document_id adicionada à tabela Alert');
+          }
+        }
+        if (oldVersion < 6) {
+          await db.execute('''
+            ALTER TABLE Document DROP COLUMN alerts
+          ''');
+          print('Coluna alerts removida da tabela Document');
+        }
+        if (oldVersion < 7) {
+          // Garantir que a coluna document_id existe na tabela Alert
+          final alertColumns = await db.rawQuery('PRAGMA table_info(Alert)');
+          bool hasDocumentId = alertColumns.any((column) => column['name'] == 'document_id');
+          if (!hasDocumentId) {
+            await db.execute('ALTER TABLE Alert ADD COLUMN document_id INTEGER');
+            print('Coluna document_id adicionada à tabela Alert na versão 7');
+          }
+        }
+      },
+      onOpen: (db) async {
+        await db.execute('PRAGMA foreign_keys = ON;');
+      },
     );
-
-    if (image != null) {
-      Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(true);
-      setState(() {
-        _selectedImage = File(image.path);
-      });
-    }
   }
 
-  void _addDocument() {
-    if (_selectedImage != null) {
-      setState(() {
-        _uploadedDocuments.add(_selectedImage!);
-        _selectedImage = null;
-      });
-    }
+  Future<bool> validateIdentifier(String email) async {
+    final db = await database;
+    final result = await db.query(
+      'User_data',
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+    return result.isNotEmpty;
   }
 
-  void _deleteImage(int index) {
-    setState(() {
-      _uploadedDocuments.removeAt(index);
+  Future<bool> validatePin(String email, String pin) async {
+    final db = await database;
+    final result = await db.query(
+      'User_data',
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+    if (result.isEmpty) return false;
+
+    final storedPinHash = result.first['pin_hash'] as String?;
+    if (storedPinHash == null) return false;
+
+    final inputPinHash = hashPin(pin);
+    return storedPinHash == inputPinHash;
+  }
+
+  String hashPin(String pin) {
+    final bytes = utf8.encode(pin);
+    return sha256.convert(bytes).toString();
+  }
+
+  Future<bool> isUserRegistered() async {
+    final db = await database;
+    final result = await db.query('User_data');
+    return result.isNotEmpty;
+  }
+
+  Future<void> registerUser(String email, String pin, bool biometric) async {
+    final db = await database;
+    final pinHash = pin.isNotEmpty ? hashPin(pin) : null;
+    await db.insert('User_data', {
+      'email': email,
+      'pin_hash': pinHash,
+      'biometric_enabled': biometric ? 1 : 0,
     });
+    print('Usuário registrado: email=$email, biometric=${biometric ? 1 : 0}');
   }
 
-  void _startCorrection() {
-    if (_selectedImage != null) {
-      _viewerKey.currentState?.startCorrection();
-    }
-  }
-
-  void _handleClose() {
-    setState(() {
-      _selectedImage = null;
-    });
-  }
-
-  void _navigateToConfirmation() {
-    if (_uploadedDocuments.isNotEmpty && _selectedImage == null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => InfoConfirmationScreen(
-            imagesList: _uploadedDocuments.map((file) => XFile(file.path)).toList(),
-          ),
-        ),
+  Future<bool> isBiometricEnabled(String email) async {
+    try {
+      final db = await database;
+      final result = await db.query(
+        'User_data',
+        where: 'email = ?',
+        whereArgs: [email],
       );
+      print('User_data query result: $result');
+      if (result.isNotEmpty) {
+        final biometricEnabled = result.first['biometric_enabled'] == 1;
+        print('Biometria habilitada no banco: $biometricEnabled');
+        return biometricEnabled;
+      }
+      print('Nenhum usuário registrado');
+      return false;
+    } catch (e) {
+      print('Erro ao verificar biometria no banco: $e');
+      return false;
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text('Carregar Documento', style: TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: Container(
-        color: Colors.black,
-        child: Column(
-          children: [
-            Expanded(
-              child: DocumentImageViewer(
-                key: _viewerKey,
-                imageFile: _selectedImage,
-                onStartCorrection: _startCorrection,
-                onAdd: _addDocument,
-                onImageProcessed: (file) {
-                  // Apenas atualiza o estado de processamento
-                  Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(false);
-                  // A imagem processada já está em _selectedImage do DocumentImageViewer
-                  setState(() {
-                    _selectedImage = file; // Mantém a imagem processada para uso no _addDocument
-                  });
-                },
-                onClose: _handleClose,
-              ),
-            ),
-            if (_uploadedDocuments.isNotEmpty)
-              Container(
-                height: 100,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _uploadedDocuments.length,
-                  itemBuilder: (context, index) {
-                    return Stack(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(3.0),
-                          child: Image.file(
-                            _uploadedDocuments[index],
-                            width: 80,
-                            height: 80,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          top: 0,
-                          child: GestureDetector(
-                            onTap: () => _deleteImage(index),
-                            child: Container(
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.black,
-                              ),
-                              child: const Icon(Icons.close, color: Colors.white, size: 20),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Column(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.change_circle,
-                        color: _selectedImage == null ? Colors.grey : Colors.white,
-                        size: 50,
-                      ),
-                      onPressed: _selectedImage == null ? null : _startCorrection,
-                    ),
-                    Text(
-                      "Corrigir",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _selectedImage == null ? Colors.grey : Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 30),
-                Column(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        _selectedImage == null ? Icons.file_upload_outlined : Icons.add_photo_alternate,
-                        color: _selectedImage == null ? Colors.white : Colors.white,
-                        size: 50,
-                      ),
-                      onPressed: _selectedImage == null ? _uploadImage : _addDocument,
-                    ),
-                    Text(
-                      _selectedImage == null ? "Carregar" : "Adicionar",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _selectedImage == null ? Colors.white : Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 30),
-                Column(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.check_circle,
-                        color: _uploadedDocuments.isNotEmpty && _selectedImage == null ? Colors.white : Colors.grey,
-                        size: 50,
-                      ),
-                      onPressed: _uploadedDocuments.isNotEmpty && _selectedImage == null ? _navigateToConfirmation : null,
-                    ),
-                    Text(
-                      "Pronto",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _uploadedDocuments.isNotEmpty && _selectedImage == null ? Colors.white : Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+  Future<List<Map<String, dynamic>>> query(String table, {String? where, List<dynamic>? whereArgs}) async {
+    final db = await database;
+    return await db.query(table, where: where, whereArgs: whereArgs);
+  }
+
+  Future<int> update(String table, Map<String, dynamic> values, {String? where, List<dynamic>? whereArgs}) async {
+    final db = await database;
+    return await db.update(table, values, where: where, whereArgs: whereArgs);
+  }
+
+  Future<void> createDossier(String dossierName) async {
+    final db = await database;
+    await db.insert('Dossier', {
+      'name': dossierName,
+      'created_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<bool> isDossierNameExists(String dossierName) async {
+    final db = await database;
+    var result = await db.query(
+      'Dossier',
+      where: 'name = ?',
+      whereArgs: [dossierName],
     );
+    return result.isNotEmpty;
+  }
+
+  Future<List<Map<String, dynamic>>> getDossiers() async {
+    final db = await database;
+    return await db.query('Dossier', orderBy: 'created_at DESC');
+  }
+
+  Future<int> insertDossier(String dossierName) async {
+    final db = await database;
+    final dossier = {
+      'name': dossierName,
+      'created_at': DateTime.now().toIso8601String(),
+    };
+    final id = await db.insert('Dossier', dossier);
+    if (id <= 0) {
+      throw Exception('Falha ao criar dossiê: ID inválido gerado ($id)');
+    }
+    print('Dossiê inserido com ID: $id');
+    return id;
+  }
+
+  Future<int> insertDocument(
+      String documentTypeName,
+      Uint8List fileData,
+      Uint8List fileDataPrint,
+      String extractedText,
+      int dossierId) async {
+    if (dossierId <= 0) {
+      throw Exception('Invalid dossierId: $dossierId');
+    }
+    final db = await database;
+    final dossierExists = await db.query(
+      'Dossier',
+      where: 'dossier_id = ?',
+      whereArgs: [dossierId],
+    );
+    if (dossierExists.isEmpty) {
+      throw Exception('Dossier com ID $dossierId não existe');
+    }
+    final document = {
+      'document_type_name': documentTypeName,
+      'file_data': fileData,
+      'file_data_print': fileDataPrint,
+      'extracted_texts': extractedText,
+      'created_at': DateTime.now().toIso8601String(),
+      'dossier_id': dossierId,
+    };
+    final id = await db.insert('Document', document);
+    print('Inserted document ID: $id with dossierId: $dossierId');
+    return id;
+  }
+
+  Future<int> insertImage(int documentId, String extractedText) async {
+    final db = await database;
+    final image = {
+      'document_id': documentId,
+      'extracted_text': extractedText,
+    };
+    final id = await db.insert('Image', image);
+    print('Inserted image ID: $id for documentId: $documentId');
+    return id;
+  }
+
+  Future<int> insertAlert(String description, DateTime date, int documentId) async {
+    final db = await database;
+    final alert = {
+      'date': date.toIso8601String(),
+      'name': description,
+      'is_active': 1,
+      'document_id': documentId,
+    };
+    final id = await db.insert('Alert', alert);
+    print('Inserted alert ID: $id for documentId: $documentId');
+    return id;
+  }
+
+  Future<List<Map<String, dynamic>>> getDocuments(int dossierId) async {
+    try {
+      final db = await database;
+      print('Buscando documentos para dossierId: $dossierId');
+      final result = await db.query(
+        'Document',
+        where: 'dossier_id = ?',
+        whereArgs: [dossierId],
+        columns: [
+          'document_id',
+          'document_type_name',
+          'created_at',
+          'file_data',
+          'file_data_print',
+        ],
+        orderBy: 'created_at DESC',
+      );
+      print('Documentos encontrados: ${result.length} para dossierId: $dossierId');
+      print('Documentos: $result');
+      return result;
+    } catch (e, stackTrace) {
+      print('Erro ao buscar documentos: $e');
+      print('Stack trace: $stackTrace');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> getDocumentFileData(int documentId) async {
+    try {
+      final db = await database;
+      final result = await db.query(
+        'Document',
+        columns: ['file_data', 'file_data_print'],
+        where: 'document_id = ?',
+        whereArgs: [documentId],
+      );
+      if (result.isNotEmpty) {
+        return result.first;
+      }
+      return null;
+    } catch (e, stackTrace) {
+      print('Erro ao buscar file_data para documentId $documentId: $e');
+      print('Stack trace: $stackTrace');
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAlerts() async {
+    try {
+      final db = await database;
+      print('Buscando todos os alertas');
+      final result = await db.rawQuery('''
+        SELECT 
+          a.alert_id,
+          a.date,
+          a.name AS description,
+          a.is_active,
+          d.document_id,
+          d.document_type_name
+        FROM Alert a
+        LEFT JOIN Document d ON d.document_id = a.document_id
+        WHERE a.is_active = 1
+      ''');
+      print('Alertas encontrados: ${result.length}');
+      print('Alertas: $result');
+      return result;
+    } catch (e, stackTrace) {
+      print('Erro ao buscar alertas: $e');
+      print('Stack trace: $stackTrace');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAlertsForDocument(int documentId) async {
+    try {
+      final db = await database;
+      print('Buscando alertas para documentId: $documentId');
+      final result = await db.rawQuery('''
+        SELECT 
+          a.alert_id,
+          a.date,
+          a.name AS description,
+          a.is_active
+        FROM Alert a
+        WHERE a.document_id = ? AND a.is_active = 1
+      ''', [documentId]);
+      print('Alertas encontrados para documentId $documentId: ${result.length}');
+      print('Alertas: $result');
+      return result;
+    } catch (e, stackTrace) {
+      print('Erro ao buscar alertas para documentId $documentId: $e');
+      print('Stack trace: $stackTrace');
+      return [];
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> searchDocumentsByText(String query) async {
+    try {
+      final normalizedQuery = removeDiacritics(query.toLowerCase());
+      final db = await database;
+      final result = await db.rawQuery('''
+        SELECT DISTINCT 
+          Document.document_id,
+          Document.document_type_name,
+          Document.extracted_texts,
+          Document.created_at,
+          Document.dossier_id
+        FROM Document
+        LEFT JOIN Image ON Image.document_id = Document.document_id
+        WHERE LOWER(removeDiacritics(Image.extracted_text)) LIKE ? 
+           OR LOWER(removeDiacritics(Document.extracted_texts)) LIKE ?
+      ''', ['%$normalizedQuery%', '%$normalizedQuery%']);
+      print('Documentos encontrados para query "$query": ${result.length}');
+      return result;
+    } catch (e, stackTrace) {
+      print('Erro ao buscar documentos por texto: $e');
+      print('Stack trace: $stackTrace');
+      return [];
+    }
+  }
+
+  Future<int> deleteDossier(int dossierId) async {
+    final db = await database;
+    return await db.delete(
+      'Dossier',
+      where: 'dossier_id = ?',
+      whereArgs: [dossierId],
+    );
+  }
+
+  Future<void> deleteDocument(int id) async {
+    final db = await database;
+    await db.delete('Document', where: 'document_id = ?', whereArgs: [id]);
+  }
+
+  Future<void> diagnoseDatabase() async {
+    final db = await database;
+    final fkStatus = await db.rawQuery('PRAGMA foreign_keys;');
+    print('Estado das chaves estrangeiras: $fkStatus');
+    final invalidDocuments = await db.rawQuery('''
+      SELECT document_id, dossier_id 
+      FROM Document 
+      WHERE dossier_id NOT IN (SELECT dossier_id FROM Dossier)
+    ''');
+    print('Documentos com dossierId inválido: $invalidDocuments');
+    final nullDocuments = await db.query(
+      'Document',
+      where: 'dossier_id IS NULL OR dossier_id = 0',
+      columns: ['document_id', 'dossier_id'],
+    );
+    print('Documentos com dossierId nulo ou zero: $nullDocuments');
+    final dossiers = await db.query('Dossier');
+    print('Dossiês no banco: $dossiers');
+    final documents = await db.query(
+      'Document',
+      columns: ['document_id', 'document_type_name', 'created_at', 'dossier_id'],
+    );
+    print('Documentos no banco: $documents');
+    final alerts = await db.query('Alert');
+    print('Alertas no banco: $alerts');
+    final images = await db.query('Image');
+    print('Imagens no banco: $images');
+    final tableInfo = await db.rawQuery('PRAGMA table_info(Document)');
+    print('Estrutura da tabela Document: $tableInfo');
   }
 }
 

@@ -1,20 +1,26 @@
+// DossierScreen.dart
+import 'dart:typed_data';
+import 'package:camera/camera.dart';
 import 'package:DigiDoc/screens/capture_document_photo.dart';
-import 'package:DigiDoc/screens/upload_document.dart';
-
-import 'package:flutter/cupertino.dart';
-
 import 'package:flutter/material.dart';
-import '../models/DataBaseHelper.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import '../constants/color_app.dart';
-
+import '../models/DataBaseHelper.dart';
+import '../widgets/DocumentImageViewer.dart';
+import 'info_confirmation.dart';
 
 class DossierScreen extends StatefulWidget {
   final int dossierId;
   final String dossierName;
+  final CameraDescription camera;
 
-  const DossierScreen(
-      {Key? key, required this.dossierId, required this.dossierName})
-      : super(key: key);
+  const DossierScreen({
+    Key? key,
+    required this.dossierId,
+    required this.dossierName,
+    required this.camera,
+  }) : super(key: key);
 
   @override
   _DossierScreenState createState() => _DossierScreenState();
@@ -23,25 +29,182 @@ class DossierScreen extends StatefulWidget {
 class _DossierScreenState extends State<DossierScreen> {
   List<Map<String, dynamic>> documents = [];
   bool _isExpanded = false;
+  bool _isLoading = true;
+  static final Map<int, List<Map<String, dynamic>>> _documentsCache = {};
 
   @override
   void initState() {
     super.initState();
+    if (widget.dossierId <= 0) {
+      print('DossierScreen iniciado com dossierId inválido: ${widget.dossierId}');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro: ID do dossiê inválido')),
+        );
+        Navigator.pop(context);
+      });
+      return;
+    }
+    DataBaseHelper.instance.diagnoseDatabase();
     loadDocuments();
   }
 
   Future<void> loadDocuments() async {
-    List<Map<String, dynamic>> docs =
-    await DataBaseHelper.instance.getDocuments(widget.dossierId);
-    setState(() {
-      documents = docs;
-    });
+    print('Carregando documentos para dossierId: ${widget.dossierId}');
+    try {
+      if (_documentsCache.containsKey(widget.dossierId)) {
+        setState(() {
+          documents = _documentsCache[widget.dossierId]!;
+          _isLoading = false;
+        });
+        print('Documentos carregados do cache: ${documents.length}');
+        return;
+      }
+
+      final docs = await DataBaseHelper.instance.getDocuments(widget.dossierId);
+      setState(() {
+        documents = docs;
+        _documentsCache[widget.dossierId] = docs;
+        _isLoading = false;
+        print('Carregados ${docs.length} documentos para dossierId: ${widget.dossierId}');
+      });
+    } catch (e) {
+      print('Erro ao carregar documentos: $e');
+      setState(() {
+        documents = [];
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao carregar documentos: $e')),
+      );
+    }
   }
 
-  void _toggleExpand() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-    });
+  Future<Color> _getDocumentStatusColor(int documentId) async {
+    final alerts = await DataBaseHelper.instance.getAlertsForDocument(documentId);
+    if (alerts.isEmpty) return Colors.grey;
+
+    final now = DateTime.now();
+    DateTime? nearestDate;
+    for (var alert in alerts) {
+      final alertDate = DateTime.parse(alert['date'] as String);
+      if (alert['is_active'] == 1 && (nearestDate == null || alertDate.isBefore(nearestDate))) {
+        nearestDate = alertDate;
+      }
+    }
+
+    if (nearestDate == null) return Colors.grey;
+    final daysUntilDue = nearestDate.difference(now).inDays;
+
+    if (now.isAfter(nearestDate)) {
+      return Colors.red;
+    } else if (daysUntilDue <= 7) {
+      return Colors.yellow;
+    } else {
+      return Colors.green;
+    }
+  }
+
+  Future<void> _editDocumentName(int documentId, String currentName) async {
+    final TextEditingController controller = TextEditingController(text: currentName);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Editar Nome do Documento'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            labelText: 'Nome do Documento',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                Navigator.pop(context, controller.text);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('O nome não pode estar vazio')),
+                );
+              }
+            },
+            child: const Text('Salvar'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.darkerBlue,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      final db = await DataBaseHelper.instance.database;
+      await db.update(
+        'Document',
+        {'document_type_name': result},
+        where: 'document_id = ?',
+        whereArgs: [documentId],
+      );
+      _documentsCache.remove(widget.dossierId);
+      await loadDocuments();
+    }
+  }
+
+  Future<void> _deleteDocument(int documentId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar Exclusão'),
+        content: const Text('Deseja excluir este documento? Esta ação não pode ser desfeita.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Excluir'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await DataBaseHelper.instance.deleteDocument(documentId);
+      _documentsCache.remove(widget.dossierId);
+      await loadDocuments();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Documento excluído com sucesso')),
+      );
+    }
+  }
+
+  Future<void> _uploadDocumentFromGallery() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      final xFile = XFile(pickedFile.path);
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => InfoConfirmationScreen(
+            imagesList: [xFile],
+            dossierId: widget.dossierId,
+          ),
+        ),
+      ).then((_) {
+        _documentsCache.remove(widget.dossierId);
+        loadDocuments();
+      });
+    }
   }
 
   @override
@@ -50,46 +213,162 @@ class _DossierScreenState extends State<DossierScreen> {
       appBar: AppBar(
         title: Text(
           widget.dossierName,
-          style: TextStyle(color: Colors.white),
+          style: const TextStyle(color: Colors.white),
         ),
         backgroundColor: AppColors.darkerBlue,
-        iconTheme: IconThemeData(color: Colors.white),
+        iconTheme: const IconThemeData(color: Colors.white),
         centerTitle: true,
       ),
       body: Padding(
-        padding: EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Documentos Salvos", style: TextStyle(fontSize: 20)),
+            const Text(
+              "Documentos Salvos",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
             Expanded(
-              child: documents.isEmpty
-                  ? Center(child: Text("Nenhum documento adicionado."))
-                  : GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 1.0,
-                ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : documents.isEmpty
+                  ? const Center(child: Text("Nenhum documento adicionado."))
+                  : ListView.builder(
                 itemCount: documents.length,
                 itemBuilder: (context, index) {
-                  return Column(
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.blue[100],
-                          borderRadius: BorderRadius.circular(10),
+                  final doc = documents[index];
+                  final docTypeName = doc['document_type_name'] as String? ?? 'Sem Nome';
+                  final docName = '$docTypeName - ${widget.dossierName}';
+                  final createdAt = doc['created_at'] != null
+                      ? DateFormat('dd/MM/yyyy', 'pt_PT').format(DateTime.parse(doc['created_at']))
+                      : 'Sem Data';
+                  final thumbnailData = doc['file_data'] as Uint8List?;
+
+                  return InkWell(
+                    onTap: () async {
+                      final fileData = await DataBaseHelper.instance.getDocumentFileData(doc['document_id']);
+                      if (fileData != null && fileData['file_data_print'] != null) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DocumentImageViewer(
+                              imageFile: null,
+                              onAdd: () {},
+                              onImageProcessed: (file) {},
+                              onClose: () {
+                                Navigator.pop(context);
+                              },
+                            ),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Nenhum PDF disponível')),
+                        );
+                      }
+                    },
+                    child: Card(
+                      elevation: 4,
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                image: thumbnailData != null
+                                    ? DecorationImage(
+                                  image: MemoryImage(thumbnailData),
+                                  fit: BoxFit.cover,
+                                )
+                                    : null,
+                                color: thumbnailData == null ? Colors.blue[100] : null,
+                              ),
+                              child: thumbnailData == null
+                                  ? const Icon(
+                                Icons.insert_drive_file,
+                                size: 40,
+                                color: Colors.blueGrey,
+                              )
+                                  : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      FutureBuilder<Color>(
+                                        future: _getDocumentStatusColor(doc['document_id']),
+                                        builder: (context, snapshot) {
+                                          return Container(
+                                            width: 12,
+                                            height: 12,
+                                            margin: const EdgeInsets.only(right: 8),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: snapshot.data ?? Colors.grey,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          docName,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.darkerBlue,
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Data de Criação: $createdAt',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit,
+                                          size: 20,
+                                          color: AppColors.darkerBlue,
+                                        ),
+                                        onPressed: () => _editDocumentName(doc['document_id'], docTypeName),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          size: 20,
+                                          color: Colors.red,
+                                        ),
+                                        onPressed: () => _deleteDocument(doc['document_id']),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        child: Icon(Icons.insert_drive_file,
-                            size: 40, color: Colors.blueGrey),
                       ),
-                      SizedBox(height: 5),
-                      Text(documents[index]['name'],
-                          style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.bold)),
-                    ],
+                    ),
                   );
                 },
               ),
@@ -106,59 +385,50 @@ class _DossierScreenState extends State<DossierScreen> {
             children: [
               Text(
                 "Galeria",
-                style:
-                TextStyle(color: AppColors.darkerBlue, fontSize: 12),
+                style: TextStyle(color: AppColors.darkerBlue, fontSize: 12),
               ),
               FloatingActionButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => UploadDocumentScreen(),
-                    ),
-                  ).then((_) => loadDocuments());
-                },
-                child: Icon(
-                  Icons.photo,
-                  color: Colors.white,
-                ),
+                heroTag: "dossier_fab_upload",
+                onPressed: _uploadDocumentFromGallery,
                 backgroundColor: AppColors.darkerBlue,
-                heroTag: null,
+                child: const Icon(Icons.upload_file, color: Colors.white),
               ),
             ],
           ),
-          SizedBox(height: 10),
+          const SizedBox(height: 10),
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 "Foto",
-                style:
-                TextStyle(color: AppColors.darkerBlue, fontSize: 12),
+                style: TextStyle(color: AppColors.darkerBlue, fontSize: 12),
               ),
               FloatingActionButton(
+                heroTag: "dossier_fab_photo",
                 onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => CaptureDocumentPhotoScreen(),
+                      builder: (context) => CaptureDocumentPhotoScreen(
+                        dossierId: widget.dossierId,
+                      ),
                     ),
-                  ).then((_) => loadDocuments());
+                  ).then((_) {
+                    _documentsCache.remove(widget.dossierId);
+                    loadDocuments();
+                  });
                 },
-                child: Icon(
-                  Icons.camera_alt,
-                  color: Colors.white,
-                ),
                 backgroundColor: AppColors.darkerBlue,
-                heroTag: null,
+                child: const Icon(Icons.camera_alt, color: Colors.white),
               ),
             ],
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           FloatingActionButton(
+            heroTag: "dossier_fab_main",
             onPressed: _toggleExpand,
-            child: Icon(Icons.close, color: Colors.white),
             backgroundColor: AppColors.darkerBlue,
+            child: const Icon(Icons.close, color: Colors.white),
           ),
         ],
       )
@@ -169,15 +439,21 @@ class _DossierScreenState extends State<DossierScreen> {
             "Adicionar\nDocumento",
             style: TextStyle(color: AppColors.darkerBlue, fontSize: 12),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           FloatingActionButton(
+            heroTag: "dossier_fab_main",
             onPressed: _toggleExpand,
             backgroundColor: AppColors.darkerBlue,
-            child: Icon(Icons.add, color: Colors.white),
+            child: const Icon(Icons.add, color: Colors.white),
           ),
         ],
       ),
     );
   }
-}
 
+  void _toggleExpand() {
+    setState(() {
+      _isExpanded = !_isExpanded;
+    });
+  }
+}

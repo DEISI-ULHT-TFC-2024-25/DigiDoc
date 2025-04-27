@@ -1,12 +1,17 @@
+// CaptureDocumentPhotoScreen.dart
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/CurrentStateProcessing.dart';
-import 'info_confirmation.dart';
 import '../widgets/DocumentImageViewer.dart';
+import 'info_confirmation.dart';
 
 class CaptureDocumentPhotoScreen extends StatefulWidget {
+  final int dossierId;
+
+  const CaptureDocumentPhotoScreen({Key? key, required this.dossierId}) : super(key: key);
+
   @override
   _CaptureDocumentPhotoScreenState createState() => _CaptureDocumentPhotoScreenState();
 }
@@ -22,21 +27,41 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
   @override
   void initState() {
     super.initState();
+    if (widget.dossierId <= 0) {
+      print('CaptureDocumentPhotoScreen iniciado com dossierId inválido: ${widget.dossierId}');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro: ID do dossiê inválido')),
+        );
+        Navigator.pop(context);
+      });
+      return;
+    }
     _initializeCamera();
   }
 
   Future<void> _initializeCamera() async {
-    _cameras = await availableCameras();
-    if (_cameras.isNotEmpty) {
-      _cameraController = CameraController(
-        _cameras[0],
-        ResolutionPreset.max,
-        enableAudio: false,
+    try {
+      _cameras = await availableCameras();
+      if (_cameras.isNotEmpty) {
+        _cameraController = CameraController(
+          _cameras[0],
+          ResolutionPreset.max,
+          enableAudio: false,
+        );
+        await _cameraController!.initialize();
+        setState(() {
+          _isCameraInitialized = true;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nenhuma câmera disponível')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao inicializar câmera: $e')),
       );
-      await _cameraController!.initialize();
-      setState(() {
-        _isCameraInitialized = true;
-      });
     }
   }
 
@@ -115,7 +140,8 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
                 setState(() {
                   _imgJustCaptured = file;
                 });
-                Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(false);
+                Provider.of<CurrentStateProcessing>(context, listen: false)
+                    .setProcessing(false);
               },
               onClose: _handleClose,
             )
@@ -221,6 +247,7 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
                               MaterialPageRoute(
                                 builder: (context) => InfoConfirmationScreen(
                                   imagesList: _capturedImages,
+                                  dossierId: widget.dossierId,
                                 ),
                               ),
                             );

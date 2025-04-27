@@ -75,7 +75,9 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
       await _catchDoc!.initialize();
 
       if (_catchDoc!.finalImage == null || _catchDoc!.documentCorners == null) {
-        throw Exception('Imagem final ou cantos não carregados');
+        state.setInternalProcessing(false);
+        _showDocumentNotDetectedDialog();
+        return;
       }
 
       final tempDir = await getTemporaryDirectory();
@@ -97,18 +99,38 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
 
       widget.onImageProcessed?.call(finalImageFile);
     } catch (e) {
-      setState(() {
-        _selectedImage = null;
-        _originalImage = null;
-        _lastProcessedImage = null;
-        _cachedImage = null;
-      });
       state.setInternalProcessing(false);
-      _catchDoc?.dispose();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao processar imagem: $e')),
-      );
+      _showDocumentNotDetectedDialog();
     }
+  }
+
+  void _showDocumentNotDetectedDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Documento Não Detectado'),
+          content: const Text('Não foi possível identificar um documento na imagem. Deseja corrigir manualmente ou descartar?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _closeImage();
+              },
+              child: const Text('Descartar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                startCorrection();
+              },
+              child: const Text('Corrigir'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> startCorrection() async {
@@ -318,6 +340,7 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
       state.setCorrecting(false);
       state.setInternalProcessing(false);
       widget.onImageProcessed?.call(correctedFile);
+      widget.onAdd?.call(); // Chama onAdd após recorte bem-sucedido
     } catch (e) {
       state.setInternalProcessing(false);
       state.setCorrecting(false);
@@ -353,10 +376,17 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.add_photo_alternate, size: 80, color: Colors.grey),
-            SizedBox(height: 20),
-            Text('Nenhum documento selecionado', style: TextStyle(fontSize: 18, color: Colors.grey)),
+          children: [
+            const Icon(Icons.add_photo_alternate, size: 80, color: Colors.grey),
+            const SizedBox(height: 20),
+            const Text('Nenhum documento selecionado', style: TextStyle(fontSize: 18, color: Colors.grey)),
+            if (widget.onAdd != null)
+              ElevatedButton.icon(
+                onPressed: widget.onAdd,
+                icon: const Icon(Icons.add, color: Colors.white),
+                label: const Text('Adicionar Imagem', style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
+              ),
           ],
         ),
       );
@@ -436,6 +466,16 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
                 ),
               ),
             ),
+            if (!state.isCorrecting)
+              Positioned(
+                bottom: 20,
+                child: ElevatedButton.icon(
+                  onPressed: widget.onAdd,
+                  icon: const Icon(Icons.add, color: Colors.white),
+                  label: const Text('Adicionar à Lista', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
+                ),
+              ),
           ],
         ),
       ),

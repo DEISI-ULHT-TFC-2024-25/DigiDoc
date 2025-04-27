@@ -1,0 +1,4 @@
+0 Título de Residência
+1 Cartão de Cidadão
+2 Passaporte Português
+3 Carta de Condução

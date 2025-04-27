@@ -1,12 +1,15 @@
-import 'package:flutter/cupertino.dart';
+// DossiersScreen.dart
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import '../models/DataBaseHelper.dart';
 import '../constants/color_app.dart';
 import 'dossier.dart';
 
-
-
 class DossiersScreen extends StatefulWidget {
+  final CameraDescription camera;
+
+  const DossiersScreen({Key? key, required this.camera}) : super(key: key);
+
   @override
   _DossiersScreenState createState() => _DossiersScreenState();
 }
@@ -22,33 +25,42 @@ class _DossiersScreenState extends State<DossiersScreen> {
   }
 
   void loadDossiers() async {
-    List<Map<String, dynamic>> loadedDossiers =
-    await DataBaseHelper().getDossiers();
+    List<Map<String, dynamic>> loadedDossiers = await DataBaseHelper.instance.getDossiers();
     setState(() {
       dossiers = loadedDossiers;
     });
   }
 
   void addDossier(BuildContext context) async {
-    String dossierName = dossierController.text;
+    String dossierName = dossierController.text.trim();
     if (dossierName.isNotEmpty) {
-      await DataBaseHelper().createDossier(dossierName);
+      bool exists = await DataBaseHelper.instance.isDossierNameExists(dossierName);
+      if (exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Nome do dossiê já existe!')),
+        );
+        return;
+      }
+      int dossierId = await DataBaseHelper.instance.insertDossier(dossierName);
       dossierController.clear();
       loadDossiers();
       Navigator.of(context).pop();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('O nome do dossiê não pode estar vazio!')),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Lista de Dossiers")),
       body: dossiers.isEmpty
-          ? Center(child: Text("Nenhum dossier disponível."))
+          ? const Center(child: Text("Nenhum dossier disponível."))
           : Padding(
-        padding: EdgeInsets.all(10),
+        padding: const EdgeInsets.all(10),
         child: GridView.builder(
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
@@ -63,8 +75,9 @@ class _DossiersScreenState extends State<DossiersScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => DossierScreen(
-                      dossierId: dossier['id'] ?? 0,
+                      dossierId: dossier['dossier_id'] ?? 0,
                       dossierName: dossier['name'] ?? "Sem Nome",
+                      camera: widget.camera,
                     ),
                   ),
                 );
@@ -78,13 +91,13 @@ class _DossiersScreenState extends State<DossiersScreen> {
                       color: Colors.grey[300],
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.folder,
-                        size: 40, color: AppColors.darkerBlue),
+                    child: Icon(Icons.folder, size: 40, color: AppColors.darkerBlue),
                   ),
-                  SizedBox(height: 5),
-                  Text(dossiers[index]['name'],
-                      style: TextStyle(
-                          fontSize: 14, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 5),
+                  Text(
+                    dossiers[index]['name'],
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
                 ],
               ),
             );
@@ -97,11 +110,11 @@ class _DossiersScreenState extends State<DossiersScreen> {
             context: context,
             builder: (BuildContext context) {
               return AlertDialog(
-                title: Text("Novo Dossier"),
+                title: const Text("Novo Dossier"),
                 content: TextField(
                   controller: dossierController,
                   autofocus: true,
-                  decoration: InputDecoration(hintText: 'Nome do Dossier'),
+                  decoration: const InputDecoration(hintText: 'Nome do Dossier'),
                 ),
                 actions: <Widget>[
                   TextButton(
@@ -109,11 +122,11 @@ class _DossiersScreenState extends State<DossiersScreen> {
                       dossierController.clear();
                       Navigator.of(context).pop();
                     },
-                    child: Text("Cancelar"),
+                    child: const Text("Cancelar"),
                   ),
                   TextButton(
                     onPressed: () => addDossier(context),
-                    child: Text("Criar"),
+                    child: const Text("Criar"),
                   ),
                 ],
               );
@@ -121,7 +134,7 @@ class _DossiersScreenState extends State<DossiersScreen> {
           );
         },
         backgroundColor: AppColors.darkerBlue,
-        child: Icon(Icons.create_new_folder, color: Colors.white),
+        child: const Icon(Icons.create_new_folder, color: Colors.white),
       ),
     );
   }

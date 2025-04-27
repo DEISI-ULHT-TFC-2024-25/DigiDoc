@@ -1,10 +1,10 @@
-Cartão de Cidadão
-Passaporte
-Cartão de Condução
-Título de residência
-Número de Identificação Fiscal (folha)
-Cartão de Número de Identificação Fiscal
-Segurança Social (folha)
-Cartão de Segurança Social
-Utente do SNS (folha)
-Cartão de Utente do SNS
+Cartão de Cidadão:cartao,cidadao,citizen,card,identity;dd mm yyyy,validade
+Passaporte:passport,pc,passaporte;dd.mm.yyyy,validade
+Cartão de Condução:carta,conducao,driving,licenca;dd.mm.yy,validade de categoria
+Título de Residência:titulo,residencia,estrangeiro,permisso,resid;dd.mm.yyyy,validade
+Número de Identificação Fiscal (folha):nif,fiscal,identificacao,tributaria;dd/mm/yyyy,validade
+Cartão de Número de Identificação Fiscal:cartao,nif,fiscal,card;dd/mm/yyyy,validade
+Segurança Social (folha):seguranca,social,ss,beneficiario;dd mm yyyy,validade
+Cartão de Segurança Social:cartao,seguranca,social,card;dd mm yyyy,validade
+Utente do SNS (folha):utente,sns,saude,servico;dd.mm.yyyy,validade
+Cartão de Utente do SNS:cartao,utente,sns,saude,card;dd.mm.yyyy,validade
