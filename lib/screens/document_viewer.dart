@@ -1,602 +1,204 @@
+// screens/document_viewer.dart
 import 'dart:io';
-import 'dart:ui' as ui;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as imge;
+import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:printing/printing.dart';
+import 'package:encrypt/encrypt.dart' as encrypt;
 import '../constants/color_app.dart';
-import '../services/CatchDocument.dart';
-import '../services/CurrentStateProcessing.dart';
 
-class DocumentImageViewer extends StatefulWidget {
-  final File? imageFile;
-  final VoidCallback? onAdd;
-  final Function(File)? onImageProcessed;
-  final VoidCallback? onStartCorrection;
-  final VoidCallback? onClose;
+class DocumentViewerScreen extends StatefulWidget {
+  final int documentId;
+  final String documentName;
+  final Uint8List fileDataPrint;
 
-  const DocumentImageViewer({
+  const DocumentViewerScreen({
     Key? key,
-    this.imageFile,
-    this.onAdd,
-    this.onImageProcessed,
-    this.onStartCorrection,
-    this.onClose,
+    required this.documentId,
+    required this.documentName,
+    required this.fileDataPrint,
   }) : super(key: key);
 
   @override
-  DocumentImageViewerState createState() => DocumentImageViewerState();
+  _DocumentViewerScreenState createState() => _DocumentViewerScreenState();
 }
 
-class DocumentImageViewerState extends State<DocumentImageViewer> {
-  File? _selectedImage;
-  File? _originalImage;
-  CatchDocument? _catchDoc;
-  File? _lastProcessedImage;
-  final double _cornerDetectionRadius = 20.0;
-  List<Offset> _corners = [Offset.zero, Offset.zero, Offset.zero, Offset.zero];
-  int? _activeCornerIndex;
-  bool _isDraggingPolygon = false;
-  Offset? _dragStartPosition;
-  Offset? _magnifierPosition;
-  final double _magnifierRadius = 50.0;
-  final double _magnifierZoom = 2.0;
-  ui.Image? _cachedImage;
+class _DocumentViewerScreenState extends State<DocumentViewerScreen> {
+  String? _pdfPath;
+  bool _isLoading = true;
+  Uint8List? _decryptedPdfData;
+
+  // Chave AES (deve ser a mesma usada no InfoConfirmationScreen)
+  static final _aesKey = encrypt.Key.fromUtf8('16bytessecretkey'); // 16, 24 ou 32 bytes
+  static final _aesIv = encrypt.IV.fromLength(16);
 
   @override
   void initState() {
     super.initState();
-    if (widget.imageFile != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _processImage(widget.imageFile!);
-      });
-    }
+    _decryptAndSavePdf();
   }
 
-  @override
-  void didUpdateWidget(DocumentImageViewer oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.imageFile != oldWidget.imageFile &&
-        widget.imageFile != null &&
-        widget.imageFile != _lastProcessedImage &&
-        !widget.imageFile!.path.contains('final_')) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _processImage(widget.imageFile!);
-      });
-    }
-  }
-
-  Future<void> _processImage(File imageFile) async {
-    final state = Provider.of<CurrentStateProcessing>(context, listen: false);
-    state.setInternalProcessing(true);
-
+  Future<void> _decryptAndSavePdf() async {
     try {
-      _catchDoc = CatchDocument(imageFile);
-      await _catchDoc!.initialize();
+      print('DocumentViewerScreen: Iniciando descriptografia para documentId: ${widget.documentId}');
+      print('DocumentViewerScreen: Tamanho do fileDataPrint: ${widget.fileDataPrint.length} bytes');
 
-      if (_catchDoc!.finalImage == null || _catchDoc!.documentCorners == null) {
-        state.setInternalProcessing(false);
-        _showDocumentNotDetectedDialog();
-        return;
+      // Verificar se fileDataPrint está vazio ou muito pequeno
+      if (widget.fileDataPrint.isEmpty) {
+        throw Exception('fileDataPrint está vazio');
+      }
+      if (widget.fileDataPrint.length < 16) {
+        throw Exception('fileDataPrint muito pequeno para descriptografia AES (${widget.fileDataPrint.length} bytes)');
       }
 
+      // Verificar se fileDataPrint parece ser um PDF encriptado
+      print('DocumentViewerScreen: Primeiros 16 bytes do fileDataPrint: ${widget.fileDataPrint.sublist(0, widget.fileDataPrint.length < 16 ? widget.fileDataPrint.length : 16)}');
+
+      // Salvar fileDataPrint para inspeção manual
       final tempDir = await getTemporaryDirectory();
-      final tempPath = '${tempDir.path}/final_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final finalImageFile = File(tempPath)..writeAsBytesSync(imge.encodeJpg(_catchDoc!.finalImage!));
+      final encryptedFile = File('${tempDir.path}/encrypted_document_${widget.documentId}.bin');
+      await encryptedFile.writeAsBytes(widget.fileDataPrint);
+      print('DocumentViewerScreen: fileDataPrint salvo em ${encryptedFile.path}');
 
-      final bytes = finalImageFile.readAsBytesSync();
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
+      // Descriptografar o PDF
+      final encrypter = encrypt.Encrypter(encrypt.AES(_aesKey, mode: encrypt.AESMode.cbc));
+      final encrypted = encrypt.Encrypted(widget.fileDataPrint);
+      final decryptedBytes = encrypter.decryptBytes(encrypted, iv: _aesIv); // Retorna List<int>
+      _decryptedPdfData = Uint8List.fromList(decryptedBytes); // Converter para Uint8List
+      print('DocumentViewerScreen: PDF descriptografado, tamanho: ${_decryptedPdfData!.length} bytes');
 
-      setState(() {
-        _originalImage = imageFile;
-        _selectedImage = finalImageFile;
-        _lastProcessedImage = imageFile;
-        _cachedImage = frame.image;
-      });
-      state.setCorrecting(false);
-      state.setInternalProcessing(false);
-
-      widget.onImageProcessed?.call(finalImageFile);
-    } catch (e) {
-      state.setInternalProcessing(false);
-      _showDocumentNotDetectedDialog();
-    }
-  }
-
-  void _showDocumentNotDetectedDialog() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: const Text('Documento Não Detectado'),
-          content: const Text('Não foi possível identificar um documento na imagem. Deseja corrigir manualmente ou descartar?'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                _closeImage();
-              },
-              child: const Text('Descartar'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(dialogContext);
-                startCorrection();
-              },
-              child: const Text('Corrigir'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Future<void> startCorrection() async {
-    final state = Provider.of<CurrentStateProcessing>(context, listen: false);
-    if (_originalImage == null || state.isCorrecting || _catchDoc == null) return;
-
-    final screenSize = MediaQuery.of(context).size;
-    final screenWidth = screenSize.width;
-    final screenHeight = screenSize.height * 0.8;
-    final imageWidth = _catchDoc!.originalImage!.width.toDouble();
-    final imageHeight = _catchDoc!.originalImage!.height.toDouble();
-
-    final aspectRatio = imageWidth / imageHeight;
-    final displayWidth = aspectRatio > screenWidth / screenHeight ? screenWidth : screenHeight * aspectRatio;
-    final displayHeight = aspectRatio > screenWidth / screenHeight ? screenWidth / aspectRatio : screenHeight;
-    final offsetX = (screenWidth - displayWidth) / 2;
-    final offsetY = (screenHeight - displayHeight) / 2;
-    final scale = displayWidth / imageWidth;
-
-    setState(() {
-      _corners = _catchDoc!.documentCorners != null
-          ? _catchDoc!.documentCorners!.map((corner) => Offset(corner[0] * scale + offsetX, corner[1] * scale + offsetY)).toList()
-          : [
-        Offset(offsetX, offsetY),
-        Offset(offsetX + displayWidth, offsetY),
-        Offset(offsetX + displayWidth, offsetY + displayHeight),
-        Offset(offsetX, offsetY + displayHeight),
-      ];
-      _selectedImage = _originalImage;
-      _cachedImage = null;
-    });
-
-    final bytes = _originalImage!.readAsBytesSync();
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-
-    setState(() {
-      _cachedImage = frame.image;
-    });
-    state.setCorrecting(true);
-    state.setInternalProcessing(false);
-    widget.onStartCorrection?.call();
-  }
-
-  Future<void> cancelCorrection() async {
-    final state = Provider.of<CurrentStateProcessing>(context, listen: false);
-    if (_catchDoc?.finalImage == null) {
-      setState(() {
-        _selectedImage = _originalImage;
-        _cachedImage = null;
-      });
-      state.setCorrecting(false);
-      return;
-    }
-
-    final tempDir = await getTemporaryDirectory();
-    final tempPath = '${tempDir.path}/final_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final finalImageFile = File(tempPath)..writeAsBytesSync(imge.encodeJpg(_catchDoc!.finalImage!));
-
-    final bytes = finalImageFile.readAsBytesSync();
-    final codec = await ui.instantiateImageCodec(bytes);
-    final frame = await codec.getNextFrame();
-
-    setState(() {
-      _selectedImage = finalImageFile;
-      _cachedImage = frame.image;
-    });
-    state.setCorrecting(false);
-  }
-
-  int? _findClosestCornerIndex(Offset position) {
-    double minDistance = _cornerDetectionRadius;
-    int? closestCornerIndex;
-
-    for (int i = 0; i < _corners.length; i++) {
-      final distance = (_corners[i] - position).distance;
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestCornerIndex = i;
-      }
-    }
-    return closestCornerIndex;
-  }
-
-  bool _isInsidePolygon(Offset position) {
-    int crossings = 0;
-    for (int i = 0, j = 3; i < 4; j = i++) {
-      final a = _corners[i];
-      final b = _corners[j];
-      if (((a.dy > position.dy) != (b.dy > position.dy)) &&
-          (position.dx < (b.dx - a.dx) * (position.dy - a.dy) / (b.dy - a.dy) + a.dx)) {
-        crossings++;
-      }
-    }
-    return crossings % 2 == 1;
-  }
-
-  void _onPanStart(DragStartDetails details) {
-    final position = details.localPosition;
-    final closestCornerIndex = _findClosestCornerIndex(position);
-    final isInside = _isInsidePolygon(position);
-
-    setState(() {
-      if (closestCornerIndex != null) {
-        _activeCornerIndex = closestCornerIndex;
-        _isDraggingPolygon = false;
-        _magnifierPosition = position;
-      } else if (isInside) {
-        _activeCornerIndex = null;
-        _isDraggingPolygon = true;
-        _dragStartPosition = position;
-        _magnifierPosition = null;
+      // Verificar se o PDF descriptografado parece válido (%PDF-1.4 ou similar no início)
+      if (_decryptedPdfData!.length >= 5) {
+        final header = String.fromCharCodes(_decryptedPdfData!.sublist(0, 5));
+        print('DocumentViewerScreen: Cabeçalho do PDF descriptografado: $header');
+        if (!header.startsWith('%PDF-')) {
+          print('DocumentViewerScreen: Aviso: O arquivo descriptografado não parece ser um PDF válido');
+        }
       } else {
-        _activeCornerIndex = null;
-        _isDraggingPolygon = false;
-        _magnifierPosition = null;
+        throw Exception('PDF descriptografado muito pequeno (${_decryptedPdfData!.length} bytes)');
       }
-    });
-  }
 
-  void _onPanUpdate(DragUpdateDetails details) {
-    final position = details.localPosition;
-    final screenSize = MediaQuery.of(context).size;
-    final clampedPosition = Offset(
-      position.dx.clamp(0.0, screenSize.width),
-      position.dy.clamp(0.0, screenSize.height * 0.8),
-    );
-
-    setState(() {
-      if (_activeCornerIndex != null) {
-        _corners[_activeCornerIndex!] = clampedPosition;
-        _magnifierPosition = clampedPosition;
-      } else if (_isDraggingPolygon && _dragStartPosition != null) {
-        final delta = clampedPosition - _dragStartPosition!;
-        _corners = _corners.map((corner) => corner + delta).toList();
-        _dragStartPosition = clampedPosition;
-        _magnifierPosition = null;
-      }
-    });
-  }
-
-  void _onPanEnd(DragEndDetails details) {
-    setState(() {
-      _activeCornerIndex = null;
-      _isDraggingPolygon = false;
-      _dragStartPosition = null;
-      _magnifierPosition = null;
-    });
-  }
-
-  Future<void> applyManualCrop() async {
-    final state = Provider.of<CurrentStateProcessing>(context, listen: false);
-    if (_originalImage == null || _catchDoc?.originalImage == null) {
-      state.setInternalProcessing(false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Imagem original inválida')),
-      );
-      return;
-    }
-
-    state.setInternalProcessing(true);
-
-    final screenSize = MediaQuery.of(context).size;
-    final screenWidth = screenSize.width;
-    final screenHeight = screenSize.height * 0.8;
-    final imageWidth = _catchDoc!.originalImage!.width.toDouble();
-    final imageHeight = _catchDoc!.originalImage!.height.toDouble();
-
-    final aspectRatio = imageWidth / imageHeight;
-    final displayWidth = aspectRatio > screenWidth / screenHeight ? screenWidth : screenHeight * aspectRatio;
-    final displayHeight = aspectRatio > screenWidth / screenHeight ? screenWidth / aspectRatio : screenHeight;
-    final offsetX = (screenWidth - displayWidth) / 2;
-    final offsetY = (screenHeight - displayHeight) / 2;
-    final scale = imageWidth / displayWidth;
-
-    final corners = _corners.map((corner) => [
-      ((corner.dx - offsetX) * scale).clamp(0.0, imageWidth - 1),
-      ((corner.dy - offsetY) * scale).clamp(0.0, imageHeight - 1),
-    ]).toList();
-
-    if (corners.any((corner) => corner[0].isNaN || corner[1].isNaN)) {
-      state.setInternalProcessing(false);
-      state.setCorrecting(false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cantos inválidos para recorte')),
-      );
-      return;
-    }
-
-    try {
-      final correctedImage = await _catchDoc!.cropWithCorners(corners);
-      if (correctedImage == null) throw Exception('Imagem recortada é nula');
-
-      final tempDir = await getTemporaryDirectory();
-      final tempPath = '${tempDir.path}/corrected_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final correctedFile = File(tempPath)..writeAsBytesSync(imge.encodeJpg(correctedImage));
-
-      final bytes = correctedFile.readAsBytesSync();
-      final codec = await ui.instantiateImageCodec(bytes);
-      final frame = await codec.getNextFrame();
+      // Salvar o PDF descriptografado como arquivo temporário
+      final file = File('${tempDir.path}/document_${widget.documentId}.pdf');
+      await file.writeAsBytes(_decryptedPdfData!);
+      print('DocumentViewerScreen: PDF descriptografado salvo em ${file.path}');
 
       setState(() {
-        _selectedImage = correctedFile;
-        _catchDoc!.finalImage = correctedImage;
-        _cachedImage = frame.image;
+        _pdfPath = file.path;
+        _isLoading = false;
       });
-      state.setCorrecting(false);
-      state.setInternalProcessing(false);
-      widget.onImageProcessed?.call(correctedFile);
-      widget.onAdd?.call(); // Chama onAdd após recorte bem-sucedido
-    } catch (e) {
-      state.setInternalProcessing(false);
-      state.setCorrecting(false);
+    } catch (e, stackTrace) {
+      print('DocumentViewerScreen: Erro ao descriptografar ou salvar PDF: $e');
+      print('Stack trace: $stackTrace');
+      // Atrasar o SnackBar para evitar erro de dependência
+      Future.microtask(() {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao carregar o PDF: $e')),
+          );
+        }
+      });
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _sharePdf() async {
+    if (_pdfPath == null || _decryptedPdfData == null) {
+      print('DocumentViewerScreen: PDF não carregado para compartilhamento');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao aplicar recorte: $e')),
+        const SnackBar(content: Text('PDF não está carregado')),
+      );
+      return;
+    }
+    try {
+      print('DocumentViewerScreen: Compartilhando PDF: $_pdfPath');
+      await Share.shareXFiles(
+        [XFile(_pdfPath!, mimeType: 'application/pdf')],
+        subject: widget.documentName,
+      );
+    } catch (e, stackTrace) {
+      print('DocumentViewerScreen: Erro ao compartilhar PDF: $e');
+      print('Stack trace: $stackTrace');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao compartilhar: $e')),
       );
     }
   }
 
-  void _closeImage() {
-    final state = Provider.of<CurrentStateProcessing>(context, listen: false);
-    setState(() {
-      _selectedImage = null;
-      _originalImage = null;
-      _lastProcessedImage = null;
-      _cachedImage = null;
-    });
-    state.setCorrecting(false);
-    state.setInternalProcessing(false);
-    _catchDoc?.dispose();
-    widget.onClose?.call();
+  Future<void> _printPdf() async {
+    if (_decryptedPdfData == null) {
+      print('DocumentViewerScreen: PDF não carregado para impressão');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('PDF não está carregado')),
+      );
+      return;
+    }
+    try {
+      print('DocumentViewerScreen: Iniciando impressão do PDF');
+      await Printing.layoutPdf(
+        onLayout: (_) => _decryptedPdfData!,
+        name: widget.documentName,
+      );
+      print('DocumentViewerScreen: Impressão concluída');
+    } catch (e, stackTrace) {
+      print('DocumentViewerScreen: Erro ao imprimir PDF: $e');
+      print('Stack trace: $stackTrace');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao imprimir: $e')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = Provider.of<CurrentStateProcessing>(context);
-
-    if (state.isProcessing || state.internalProcessing) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (_selectedImage == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.add_photo_alternate, size: 80, color: Colors.grey),
-            const SizedBox(height: 20),
-            const Text('Nenhum documento selecionado', style: TextStyle(fontSize: 18, color: Colors.grey)),
-            if (widget.onAdd != null)
-              ElevatedButton.icon(
-                onPressed: widget.onAdd,
-                icon: const Icon(Icons.add, color: Colors.white),
-                label: const Text('Adicionar Imagem', style: TextStyle(color: Colors.white)),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
-              ),
-          ],
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.documentName,
+          style: const TextStyle(color: Colors.white),
         ),
-      );
-    }
-
-    final screenSize = MediaQuery.of(context).size;
-    final imageWidth = _catchDoc?.originalImage?.width.toDouble() ?? 1.0;
-    final imageHeight = _catchDoc?.originalImage?.height.toDouble() ?? 1.0;
-
-    return GestureDetector(
-      child: InteractiveViewer(
-        minScale: 0.5,
-        maxScale: 4.0,
-        child: Stack(
-          fit: StackFit.expand,
-          alignment: Alignment.center,
-          children: [
-            Image.file(_selectedImage!, fit: BoxFit.contain),
-            if (state.isCorrecting)
-              CustomPaint(
-                painter: CornersPainter(
-                  corners: _corners,
-                  activeCornerIndex: _activeCornerIndex,
-                  isDraggingPolygon: _isDraggingPolygon,
-                  cachedImage: _cachedImage,
-                  magnifierPosition: _magnifierPosition,
-                  magnifierRadius: _magnifierRadius,
-                  magnifierZoom: _magnifierZoom,
-                  screenSize: screenSize,
-                  imageWidth: imageWidth,
-                  imageHeight: imageHeight,
-                ),
-                child: GestureDetector(
-                  onPanStart: _onPanStart,
-                  onPanUpdate: _onPanUpdate,
-                  onPanEnd: _onPanEnd,
-                ),
-              ),
-            if (state.isCorrecting)
-              Positioned(
-                bottom: 20,
-                left: 0,
-                right: 0,
-                child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: applyManualCrop,
-                        icon: const Icon(Icons.crop, color: AppColors.calmWhite),
-                        label: const Text('Recortar', style: TextStyle(color: AppColors.calmWhite)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.lighterBlue,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      ElevatedButton.icon(
-                        onPressed: cancelCorrection,
-                        icon: const Icon(Icons.cancel, color: AppColors.calmWhite),
-                        label: const Text('Cancelar', style: TextStyle(color: AppColors.calmWhite)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            Positioned(
-              top: 10,
-              right: 10,
-              child: IconButton(
-                onPressed: _closeImage,
-                icon: const Icon(Icons.close, size: 20, color: AppColors.calmWhite),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.black.withAlpha(50),
-                ),
-              ),
-            ),
-            if (!state.isCorrecting)
-              Positioned(
-                bottom: 20,
-                child: ElevatedButton.icon(
-                  onPressed: widget.onAdd,
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text('Adicionar à Lista', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
-                ),
-              ),
-          ],
-        ),
+        backgroundColor: AppColors.darkerBlue,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.white),
+            onPressed: _sharePdf,
+            tooltip: 'Compartilhar',
+          ),
+          IconButton(
+            icon: const Icon(Icons.print, color: Colors.white),
+            onPressed: _printPdf,
+            tooltip: 'Imprimir',
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _pdfPath == null
+          ? const Center(child: Text('Erro ao carregar o PDF'))
+          : PDFView(
+        filePath: _pdfPath!,
+        enableSwipe: true,
+        swipeHorizontal: false,
+        autoSpacing: true,
+        pageFling: true,
+        onError: (error) {
+          print('DocumentViewerScreen: Erro no PDFView: $error');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao exibir o PDF: $error')),
+          );
+        },
+        onRender: (pages) {
+          print('DocumentViewerScreen: PDF renderizado com $pages páginas');
+        },
+        onPageChanged: (page, total) {
+          print('DocumentViewerScreen: Página alterada: $page/$total');
+        },
       ),
     );
   }
-}
-
-class CornersPainter extends CustomPainter {
-  final List<Offset> corners;
-  final int? activeCornerIndex;
-  final bool isDraggingPolygon;
-  final ui.Image? cachedImage;
-  final Offset? magnifierPosition;
-  final double magnifierRadius;
-  final double magnifierZoom;
-  final Size screenSize;
-  final double imageWidth;
-  final double imageHeight;
-
-  CornersPainter({
-    required this.corners,
-    this.activeCornerIndex,
-    required this.isDraggingPolygon,
-    this.cachedImage,
-    this.magnifierPosition,
-    required this.magnifierRadius,
-    required this.magnifierZoom,
-    required this.screenSize,
-    required this.imageWidth,
-    required this.imageHeight,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.red.withAlpha(50)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    final path = Path()
-      ..moveTo(corners[0].dx, corners[0].dy)
-      ..lineTo(corners[1].dx, corners[1].dy)
-      ..lineTo(corners[2].dx, corners[2].dy)
-      ..lineTo(corners[3].dx, corners[3].dy)
-      ..close();
-
-    canvas.drawPath(path, paint);
-
-    for (int i = 0; i < corners.length; i++) {
-      final circlePaint = Paint()
-        ..color = i == activeCornerIndex ? Colors.blue : Colors.red
-        ..style = PaintingStyle.fill;
-      final radius = i == activeCornerIndex ? 12.0 : 10.0;
-      canvas.drawCircle(corners[i], radius, circlePaint);
-
-      canvas.drawCircle(corners[i], radius, Paint()
-        ..color = Colors.white
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke);
-    }
-
-    if (isDraggingPolygon) {
-      final center = Offset(
-        corners.map((c) => c.dx).reduce((a, b) => a + b) / 4,
-        corners.map((c) => c.dy).reduce((a, b) => a + b) / 4,
-      );
-      canvas.drawCircle(center, 10.0, Paint()
-        ..color = Colors.blue
-        ..style = PaintingStyle.fill);
-      canvas.drawCircle(center, 10.0, Paint()
-        ..color = Colors.white
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke);
-    }
-
-    if (activeCornerIndex != null && magnifierPosition != null && cachedImage != null) {
-      final magnifierCenter = Offset(magnifierPosition!.dx, magnifierPosition!.dy - magnifierRadius - 20);
-
-      canvas.save();
-      canvas.clipPath(Path()..addOval(Rect.fromCircle(center: magnifierCenter, radius: magnifierRadius)));
-
-      final screenWidth = screenSize.width;
-      final screenHeight = screenSize.height * 0.8;
-      final aspectRatio = imageWidth / imageHeight;
-      final displayWidth = aspectRatio > screenWidth / screenHeight ? screenWidth : screenHeight * aspectRatio;
-      final displayHeight = aspectRatio > screenWidth / screenHeight ? screenWidth / aspectRatio : screenHeight;
-      final offsetX = (screenWidth - displayWidth) / 2;
-      final offsetY = (screenHeight - displayHeight) / 2;
-      final scale = displayWidth / imageWidth;
-
-      final imageX = (magnifierPosition!.dx - offsetX) / scale;
-      final imageY = (magnifierPosition!.dy - offsetY) / scale;
-
-      final matrix = Matrix4.identity()
-        ..translate(magnifierCenter.dx - imageX * magnifierZoom * scale, magnifierCenter.dy - imageY * magnifierZoom * scale)
-        ..scale(magnifierZoom * scale);
-      final imageShader = ImageShader(cachedImage!, TileMode.clamp, TileMode.clamp, matrix.storage);
-
-      canvas.drawCircle(magnifierCenter, magnifierRadius, Paint()..shader = imageShader);
-      canvas.restore();
-
-      canvas.drawCircle(magnifierCenter, magnifierRadius, Paint()
-        ..color = Colors.black
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke);
-
-      final cornerInMagnifier = corners[activeCornerIndex!];
-      final relativePos = Offset(
-        magnifierCenter.dx + (cornerInMagnifier.dx - magnifierPosition!.dx) * magnifierZoom,
-        magnifierCenter.dy + (cornerInMagnifier.dy - magnifierPosition!.dy) * magnifierZoom,
-      );
-      canvas.drawCircle(relativePos, 7.0, Paint()
-        ..color = Colors.blue
-        ..style = PaintingStyle.fill);
-      canvas.drawCircle(relativePos, 7.0, Paint()
-        ..color = Colors.white
-        ..strokeWidth = 2
-        ..style = PaintingStyle.stroke);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

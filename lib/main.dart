@@ -1,4 +1,5 @@
 import 'package:DigiDoc/pages/main_page.dart';
+import 'package:DigiDoc/screens/dossiers.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -9,20 +10,33 @@ import 'dart:io' show Platform;
 import 'package:DigiDoc/models/DataBaseHelper.dart';
 import 'package:DigiDoc/services/CurrentStateProcessing.dart';
 import 'package:DigiDoc/constants/color_app.dart';
+import 'package:DigiDoc/screens/alerts.dart';
+import 'services/notification_service.dart';
+
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Inicializar câmeras
   final cameras = await availableCameras();
   final firstCamera = cameras.isNotEmpty ? cameras.first : null;
 
+  // Inicializar notificações
+  await initNotifications(navigatorKey);
+
+  // Solicitar permissões no Android
   if (Platform.isAndroid) {
     await Permission.camera.request();
     await Permission.notification.request();
+    await Permission.scheduleExactAlarm.request();
   }
 
+  // Inicializar formatação de data para pt_PT
   await initializeDateFormatting('pt_PT', null);
 
+  // Inicializar banco de dados
   final dbHelper = DataBaseHelper.instance;
   await dbHelper.getDossiers();
 
@@ -47,6 +61,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey, // Usar a chave global definida
       title: 'DigiDoc',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: AppColors.darkerBlue),
@@ -69,19 +84,6 @@ class MyApp extends StatelessWidget {
       routes: {
         '/alerts': (context) => const AlertsScreen(),
       },
-    );
-  }
-}
-
-class AlertsScreen extends StatelessWidget {
-  const AlertsScreen({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    final String? payload = ModalRoute.of(context)?.settings.arguments as String?;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Alertas')),
-      body: Center(child: Text('Alerta: ${payload ?? "Sem payload"}')),
     );
   }
 }

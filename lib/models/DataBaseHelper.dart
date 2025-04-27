@@ -368,19 +368,23 @@ class DataBaseHelper {
       final db = await database;
       print('Buscando todos os alertas');
       final result = await db.rawQuery('''
-        SELECT 
-          a.alert_id,
-          a.date,
-          a.name AS description,
-          a.is_active,
-          d.document_id,
-          d.document_type_name
-        FROM Alert a
-        LEFT JOIN Document d ON d.document_id = a.document_id
-        WHERE a.is_active = 1
-      ''');
+      SELECT 
+        a.alert_id,
+        a.date,
+        a.name AS description,
+        a.is_active,
+        a.document_id,
+        d.document_type_name,
+        d.file_data
+      FROM Alert a
+      LEFT JOIN Document d ON a.document_id = d.document_id
+    ''');
       print('Alertas encontrados: ${result.length}');
-      print('Alertas: $result');
+      for (var alert in result) {
+        print('Alerta: alert_id=${alert['alert_id']}, description=${alert['description']}, '
+            'date=${alert['date']}, is_active=${alert['is_active']}, '
+            'document_id=${alert['document_id']}, document_type_name=${alert['document_type_name']}');
+      }
       return result;
     } catch (e, stackTrace) {
       print('Erro ao buscar alertas: $e');

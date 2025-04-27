@@ -35,31 +35,51 @@ class DocScanner {
       // Processar a imagem original para reconhecimento de texto
       await _processImage();
 
-      // Obter o ângulo mais frequente e rotacionar a imagem
-      double? angle = await getMostFreqAngle() ?? 0.0; // Fallback para 0
-      print('Ângulo mais frequente (original): $angle');
-      modifiedImage = _rotateImage(originalImage!, angle);
-      if (modifiedImage == null) {
-        print('Erro: Falha ao rotacionar a imagem, usando imagem original');
+      // Obter coordenadas do texto para estimar o contorno do documento
+      final coordinates = await getTextAreaCoordinates();
+      if (coordinates != null) {
+        modifiedImage = await getCroppedImageByCoordinates(coordinates);
+        if (modifiedImage == null) {
+          print('Erro: Falha ao recortar imagem, usando imagem original');
+          modifiedImage = originalImage;
+        } else {
+          print('Imagem recortada: ${modifiedImage!.width}x${modifiedImage!.height}');
+          // Salvar a imagem recortada em um arquivo temporário
+          final tempDir = await getTemporaryDirectory();
+          final tempPath = '${tempDir.path}/cropped_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final croppedImageFile = File(tempPath)..writeAsBytesSync(imge.encodeJpg(modifiedImage!));
+          print('Imagem recortada salva em: $tempPath');
+          _imageFile = croppedImageFile;
+          await _processImage(); // Reprocessar a imagem recortada
+        }
+      } else {
+        print('Nenhum contorno detectado, usando imagem original');
         modifiedImage = originalImage;
       }
-      print('Imagem rotacionada: ${modifiedImage!.width}x${modifiedImage!.height}');
 
-      // Salvar a imagem rotacionada em um arquivo temporário
-      final tempDir = await getTemporaryDirectory();
-      final tempPath = '${tempDir.path}/rotated_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final rotatedImageFile = File(tempPath)..writeAsBytesSync(imge.encodeJpg(modifiedImage!));
-      print('Imagem rotacionada salva em: $tempPath');
-
-      // Reprocessar a imagem rotacionada para atualizar _recognizedText e textGroup
-      _imageFile = rotatedImageFile;
-      await _processImage();
-      angle = await getMostFreqAngle(); // Recalcular textGroup na imagem rotacionada
-      print('Ângulo mais frequente (rotacionada): ${angle ?? 'Não calculado'}');
+      // Obter o ângulo mais frequente e rotacionar a imagem
+      double? angle = await getMostFreqAngle() ?? 0.0;
+      print('Ângulo mais frequente: $angle');
+      if (angle != 0.0) {
+        modifiedImage = _rotateImage(modifiedImage!, angle);
+        if (modifiedImage == null) {
+          print('Erro: Falha ao rotacionar a imagem, usando imagem anterior');
+          modifiedImage = originalImage;
+        } else {
+          print('Imagem rotacionada: ${modifiedImage!.width}x${modifiedImage!.height}');
+          // Salvar a imagem rotacionada
+          final tempDir = await getTemporaryDirectory();
+          final tempPath = '${tempDir.path}/rotated_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final rotatedImageFile = File(tempPath)..writeAsBytesSync(imge.encodeJpg(modifiedImage!));
+          print('Imagem rotacionada salva em: $tempPath');
+          _imageFile = rotatedImageFile;
+          await _processImage();
+        }
+      }
     } catch (e) {
       print('Erro ao inicializar DocumentScanner: $e');
       _recognizedText = null;
-      modifiedImage = originalImage; // Fallback para imagem original
+      modifiedImage = originalImage;
     }
   }
 

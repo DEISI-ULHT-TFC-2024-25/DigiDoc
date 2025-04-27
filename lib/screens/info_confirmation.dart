@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:encrypt/encrypt.dart' as encrypt;
+import 'package:path_provider/path_provider.dart';
 import '../constants/color_app.dart';
 import '../services/DocScanner.dart';
 import '../models/DataBaseHelper.dart';
@@ -68,6 +69,8 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
       });
       if (selectedDocType == null) {
         _showDocumentNotDetectedDialog();
+      } else {
+        _addAutomaticAlert();
       }
     }
   }
@@ -341,6 +344,27 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
     return dates.isNotEmpty ? dates : null;
   }
 
+  void _addAutomaticAlert() {
+    if (_extractedTextsList.isEmpty || selectedDocType == null) return;
+
+    String combinedText = _extractedTextsList.join('\n');
+    List<DateTime>? dates = extractFutureDate(combinedText, dateAlertStructure);
+
+    if (dates != null && dates.isNotEmpty) {
+      DateTime earliestDate = dates.reduce((a, b) => a.isBefore(b) ? a : b);
+      TimeOfDay time = TimeOfDay(hour: 9, minute: 0); // Hora padrão para o alerta
+      String description = dateAlertDescription ?? 'Validade do documento $selectedDocType';
+
+      setState(() {
+        _alerts.add(Alert(
+          date: earliestDate,
+          time: time,
+          description: description,
+        ));
+      });
+    }
+  }
+
   void _addOrEditAlert({Alert? existingAlert, int? index}) {
     final dateController = TextEditingController(
       text: existingAlert != null
@@ -532,14 +556,34 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
         ),
       );
     }
-    return await pdf.save();
+    final pdfData = await pdf.save();
+    print('InfoConfirmationScreen: Tamanho do PDF gerado: ${pdfData.length} bytes');
+
+    // Salvar PDF não encriptado para inspeção
+    final tempDir = await getTemporaryDirectory();
+    final pdfFile = File('${tempDir.path}/unencrypted_pdf_${widget.dossierId}.pdf');
+    await pdfFile.writeAsBytes(pdfData);
+    print('InfoConfirmationScreen: PDF não encriptado salvo em ${pdfFile.path}');
+
+    return pdfData;
   }
 
   Future<Uint8List> _encryptPdfData(Uint8List pdfData) async {
+    // Validar o PDF antes da encriptação
+    if (pdfData.length < 5) {
+      throw Exception('PDF gerado muito pequeno (${pdfData.length} bytes)');
+    }
+    final header = String.fromCharCodes(pdfData.sublist(0, 5));
+    if (!header.startsWith('%PDF-')) {
+      throw Exception('PDF gerado não é válido (cabeçalho: $header)');
+    }
+    print('InfoConfirmationScreen: Cabeçalho do PDF gerado: $header');
+
     final aesKey = encrypt.Key.fromUtf8('16bytessecretkey');
     final aesIv = encrypt.IV.fromUtf8('16bytesiv1234567');
     final encrypter = encrypt.Encrypter(encrypt.AES(aesKey, mode: encrypt.AESMode.cbc));
     final encrypted = encrypter.encryptBytes(pdfData, iv: aesIv);
+    print('InfoConfirmationScreen: Tamanho do PDF encriptado: ${encrypted.bytes.length} bytes');
     return encrypted.bytes;
   }
 
@@ -721,9 +765,12 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                     );
                     dateAlertStructure = docType.dateStructure;
                     dateAlertDescription = docType.alertDescription;
+                    _alerts.clear(); // Limpar alertas existentes
+                    _addAutomaticAlert(); // Adicionar alerta automático com base no novo tipo
                   } else {
                     dateAlertStructure = 'dd mm yyyy';
                     dateAlertDescription = 'Nenhum alerta';
+                    _alerts.clear();
                   }
                 });
               },
@@ -740,6 +787,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                 onChanged: (value) {
                   setState(() {
                     selectedDocType = value.isNotEmpty ? value : 'Outro';
+                    _alerts.clear();
                   });
                 },
               ),

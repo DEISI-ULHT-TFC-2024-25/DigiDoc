@@ -1,16 +1,14 @@
-// DossierScreen.dart
+// screens/dossier.dart
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
-import 'package:DigiDoc/screens/capture_document_photo.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../constants/color_app.dart';
 import '../models/DataBaseHelper.dart';
-import '../widgets/DocumentImageViewer.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-
+import 'capture_document_photo.dart';
+import 'upload_document.dart';
 import 'info_confirmation.dart';
+import 'document_viewer.dart'; // Novo import
 
 class DossierScreen extends StatefulWidget {
   final int dossierId;
@@ -189,26 +187,6 @@ class _DossierScreenState extends State<DossierScreen> {
     }
   }
 
-  Future<void> _uploadDocument() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      final file = File(pickedFile.path);
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => InfoConfirmationScreen(
-            imagesList: [XFile(file.path)],
-            dossierId: widget.dossierId,
-          ),
-        ),
-      ).then((_) {
-        _documentsCache.remove(widget.dossierId);
-        loadDocuments();
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -256,13 +234,10 @@ class _DossierScreenState extends State<DossierScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => DocumentImageViewer(
-                              imageFile: null,
-                              onAdd: () {},
-                              onImageProcessed: (file) {},
-                              onClose: () {
-                                Navigator.pop(context);
-                              },
+                            builder: (context) => DocumentViewerScreen(
+                              documentId: doc['document_id'],
+                              documentName: docTypeName,
+                              fileDataPrint: fileData['file_data_print'] as Uint8List,
                             ),
                           ),
                         );
@@ -395,7 +370,19 @@ class _DossierScreenState extends State<DossierScreen> {
               ),
               FloatingActionButton(
                 heroTag: "dossier_fab_upload",
-                onPressed: _uploadDocument,
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => UploadDocumentScreen(
+                        dossierId: widget.dossierId,
+                      ),
+                    ),
+                  ).then((_) {
+                    _documentsCache.remove(widget.dossierId);
+                    loadDocuments();
+                  });
+                },
                 backgroundColor: AppColors.darkerBlue,
                 child: const Icon(Icons.upload_file, color: Colors.white),
               ),

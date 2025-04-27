@@ -1,8 +1,8 @@
-import 'package:DigiDoc/main.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import '../constants/color_app.dart';
 import '../screens/dossiers.dart';
+import '../screens/alerts.dart' as alerts;
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title, required this.camera});
@@ -15,12 +15,13 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
+  final GlobalKey<alerts.AlertsScreenState> _alertsScreenKey = GlobalKey<alerts.AlertsScreenState>();
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> _screens = [
       DossiersScreen(camera: widget.camera),
-      AlertsScreen(),
+      alerts.AlertsScreen(key: _alertsScreenKey), // Use o alias
     ];
     final List<String> _titles = [
       "Os meus dossiers",
@@ -41,6 +42,11 @@ class _MyHomePageState extends State<MyHomePage> {
         onTap: (index) {
           setState(() {
             _selectedIndex = index;
+            print('MyHomePage: Selecionado índice: $index');
+            if (index == 1 && _alertsScreenKey.currentState != null) {
+              print('MyHomePage: Chamando loadAlerts no AlertsScreen');
+              _alertsScreenKey.currentState!.loadAlerts();
+            }
           });
         },
         items: const [
