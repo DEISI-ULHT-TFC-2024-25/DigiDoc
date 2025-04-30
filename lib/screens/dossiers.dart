@@ -1,4 +1,3 @@
-// DossiersScreen.dart
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import '../models/DataBaseHelper.dart';
@@ -52,6 +51,36 @@ class _DossiersScreenState extends State<DossiersScreen> {
     }
   }
 
+  void deleteDossier(BuildContext context, int dossierId, String dossierName) async {
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Apagar Dossiê'),
+          content: Text('Tem certeza que deseja apagar o dossiê "$dossierName"?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Apagar'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      await DataBaseHelper.instance.deleteDossier(dossierId);
+      loadDossiers();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Dossiê "$dossierName" apagado com sucesso!')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,9 +97,9 @@ class _DossiersScreenState extends State<DossiersScreen> {
           ),
           itemCount: dossiers.length,
           itemBuilder: (context, index) {
+            final dossier = dossiers[index];
             return GestureDetector(
               onTap: () {
-                final dossier = dossiers[index];
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -80,6 +109,13 @@ class _DossiersScreenState extends State<DossiersScreen> {
                       camera: widget.camera,
                     ),
                   ),
+                );
+              },
+              onLongPress: () {
+                deleteDossier(
+                  context,
+                  dossier['dossier_id'] ?? 0,
+                  dossier['name'] ?? "Sem Nome",
                 );
               },
               child: Column(

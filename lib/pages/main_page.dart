@@ -3,31 +3,46 @@ import 'package:flutter/material.dart';
 import '../constants/color_app.dart';
 import '../screens/dossiers.dart';
 import '../screens/alerts.dart' as alerts;
+import '../screens/settings.dart';
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title, required this.camera});
+  const MyHomePage({
+    super.key,
+    required this.title,
+    required this.camera,
+    required this.page_index,
+  });
   final String title;
-  final CameraDescription? camera; // Alterado para CameraDescription?
+  final CameraDescription? camera;
+  final int page_index;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   final GlobalKey<alerts.AlertsScreenState> _alertsScreenKey = GlobalKey<alerts.AlertsScreenState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.page_index;
+  }
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> _screens = [
       widget.camera == null
           ? const Center(child: Text('Nenhuma câmera disponível'))
-          : DossiersScreen(camera: widget.camera!), // Passar camera não nulo
+          : DossiersScreen(camera: widget.camera!),
       alerts.AlertsScreen(key: _alertsScreenKey),
+      const SettingsScreen(),
     ];
     final List<String> _titles = [
       "Os meus dossiers",
       "Alertas",
+      "Definições",
     ];
 
     return Scaffold(
@@ -59,6 +74,10 @@ class _MyHomePageState extends State<MyHomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.notifications),
             label: "Alertas",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: "Definições",
           ),
         ],
       ),

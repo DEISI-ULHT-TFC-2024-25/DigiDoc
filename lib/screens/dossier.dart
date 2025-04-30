@@ -1,4 +1,3 @@
-// screens/dossier.dart
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +6,7 @@ import '../constants/color_app.dart';
 import '../models/DataBaseHelper.dart';
 import 'capture_document_photo.dart';
 import 'upload_document.dart';
-import 'document_viewer.dart'; // Novo import
+import 'document_viewer.dart';
 
 class DossierScreen extends StatefulWidget {
   final int dossierId;
@@ -27,8 +26,10 @@ class DossierScreen extends StatefulWidget {
 
 class _DossierScreenState extends State<DossierScreen> {
   List<Map<String, dynamic>> documents = [];
+  List<Map<String, dynamic>> filteredDocuments = [];
   bool _isExpanded = false;
   bool _isLoading = true;
+  final TextEditingController _searchController = TextEditingController();
   static final Map<int, List<Map<String, dynamic>>> _documentsCache = {};
 
   @override
@@ -46,6 +47,7 @@ class _DossierScreenState extends State<DossierScreen> {
     }
     DataBaseHelper.instance.diagnoseDatabase();
     loadDocuments();
+    _searchController.addListener(_filterDocuments);
   }
 
   Future<void> loadDocuments() async {
@@ -54,6 +56,7 @@ class _DossierScreenState extends State<DossierScreen> {
       if (_documentsCache.containsKey(widget.dossierId)) {
         setState(() {
           documents = _documentsCache[widget.dossierId]!;
+          filteredDocuments = documents;
           _isLoading = false;
         });
         print('Documentos carregados do cache: ${documents.length}');
@@ -63,6 +66,7 @@ class _DossierScreenState extends State<DossierScreen> {
       final docs = await DataBaseHelper.instance.getDocuments(widget.dossierId);
       setState(() {
         documents = docs;
+        filteredDocuments = docs;
         _documentsCache[widget.dossierId] = docs;
         _isLoading = false;
         print('Carregados ${docs.length} documentos para dossierId: ${widget.dossierId}');
@@ -71,10 +75,34 @@ class _DossierScreenState extends State<DossierScreen> {
       print('Erro ao carregar documentos: $e');
       setState(() {
         documents = [];
+        filteredDocuments = [];
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao carregar documentos: $e')),
+      );
+    }
+  }
+
+  void _filterDocuments() async {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) {
+      setState(() {
+        filteredDocuments = documents;
+      });
+      return;
+    }
+
+    try {
+      final results = await DataBaseHelper.instance.searchDocumentsByText(query);
+      final filtered = results.where((doc) => doc['dossier_id'] == widget.dossierId).toList();
+      setState(() {
+        filteredDocuments = filtered;
+      });
+    } catch (e) {
+      print('Erro ao filtrar documentos: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao buscar documentos: $e')),
       );
     }
   }
@@ -187,6 +215,13 @@ class _DossierScreenState extends State<DossierScreen> {
   }
 
   @override
+  void dispose() {
+    _searchController.removeListener(_filterDocuments);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -203,6 +238,19 @@ class _DossierScreenState extends State<DossierScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Pesquisar documentos por palavras-chave',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                filled: true,
+                fillColor: Colors.grey[200],
+              ),
+            ),
+            const SizedBox(height: 10),
             const Text(
               "Documentos Salvos",
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
@@ -211,12 +259,12 @@ class _DossierScreenState extends State<DossierScreen> {
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : documents.isEmpty
-                  ? const Center(child: Text("Nenhum documento adicionado."))
+                  : filteredDocuments.isEmpty
+                  ? const Center(child: Text("Nenhum documento encontrado."))
                   : ListView.builder(
-                itemCount: documents.length,
+                itemCount: filteredDocuments.length,
                 itemBuilder: (context, index) {
-                  final doc = documents[index];
+                  final doc = filteredDocuments[index];
                   final docTypeName = doc['document_type_name'] as String? ?? 'Não Definido';
                   final docName = doc['document_name'] as String? ?? 'Sem Nome';
                   final createdAt = doc['created_at'] != null
@@ -282,7 +330,6 @@ class _DossierScreenState extends State<DossierScreen> {
                                 children: [
                                   Row(
                                     children: [
-
                                       Expanded(
                                         child: Text(
                                           docName,
@@ -305,7 +352,6 @@ class _DossierScreenState extends State<DossierScreen> {
                                       color: Colors.grey,
                                     ),
                                   ),
-
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
@@ -316,11 +362,12 @@ class _DossierScreenState extends State<DossierScreen> {
                                             width: 12,
                                             height: 12,
                                             margin: const EdgeInsets.only(right: 8),
-                                            child: snapshot.data != null ? Icon(Icons.notifications_active) : Icon(Icons.notifications_off),
+                                            child: snapshot.data != null
+                                                ? Icon(Icons.notifications_active)
+                                                : Icon(Icons.notifications_off),
                                           );
                                         },
                                       ),
-
                                     ],
                                   ),
                                   const SizedBox(height: 4),

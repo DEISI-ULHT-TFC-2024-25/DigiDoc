@@ -22,7 +22,7 @@ class DataBaseHelper {
     String path = join(await getDatabasesPath(), 'digidoc.db');
     return await openDatabase(
       path,
-      version: 9, // Incrementado para nova migração (era 8)
+      version: 9,
       onCreate: (db, version) async {
         await db.execute('PRAGMA foreign_keys = ON;');
 
@@ -44,7 +44,7 @@ class DataBaseHelper {
         CREATE TABLE User_data (
           user_data_id INTEGER PRIMARY KEY AUTOINCREMENT,
           email TEXT NOT NULL UNIQUE,
-          pin_hash TEXT,
+          pin_hash TEXT NULL,
           biometric_enabled BOOLEAN NOT NULL
         )
         ''');
@@ -137,13 +137,11 @@ class DataBaseHelper {
           }
         }
         if (oldVersion < 9) {
-          // Adicionar coluna document_name à tabela Document
           final docColumns = await db.rawQuery('PRAGMA table_info(Document)');
           bool hasDocumentName = docColumns.any((column) => column['name'] == 'document_name');
           if (!hasDocumentName) {
             await db.execute('ALTER TABLE Document ADD COLUMN document_name TEXT NOT NULL DEFAULT "Sem Nome"');
             print('Coluna document_name adicionada à tabela Document');
-            // Atualizar documentos existentes com um valor padrão baseado em document_type_name
             await db.execute('''
               UPDATE Document 
               SET document_name = document_type_name 
@@ -157,6 +155,12 @@ class DataBaseHelper {
         await db.execute('PRAGMA foreign_keys = ON;');
       },
     );
+  }
+
+  Future<bool> hasPin() async {
+    final db = await database;
+    final result = await db.query('User_data');
+    return result.isNotEmpty && result.first['pin_hash'] != null;
   }
 
   Future<bool> validateIdentifier(String email) async {
