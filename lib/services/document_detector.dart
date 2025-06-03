@@ -1,11 +1,13 @@
+
+
 import 'dart:math' as math;
 import 'package:image/image.dart' as imag;
 
-class DocDetector {
+class DocumentDetector {
   imag.Image? imageResult;
   List<List<double>>? imageCorners;
 
-  DocDetector({required imag.Image image})
+  DocumentDetector({required imag.Image image})
   {
     imageResult = image;
   }
@@ -33,8 +35,6 @@ class DocDetector {
 
     cropWidth = math.max(1, math.min(image.width - cropX, cropWidth));
     cropHeight = math.max(1, math.min(image.height - cropY, cropHeight));
-
-    print("Crop params: x=$cropX, y=$cropY, width=$cropWidth, height=$cropHeight");
 
     return imag.copyCrop(
       image,
@@ -423,10 +423,8 @@ class DocDetector {
       );
 
       imageCorners = corners;
-      print("Corners: $corners");
 
       List<List<double>> dstPoints = getCorrectedCornersPerspective(srcPoints: corners);
-      print("DstPoints: $dstPoints");
 
       // Aplicar perspectiva e recorte na imagem original
       image = correctPerspective(
@@ -437,9 +435,7 @@ class DocDetector {
         height: height,
       );
       imageResult = cropImage(image: image, dstPoints: dstPoints);
-      print("Image processed: ${imageResult!.width}x${imageResult!.height}");
     } else {
-      print("Edge detection failed: top=$angleTop, bottom=$angleBottom, left=$angleLeft, right=$angleRight");
       imageResult = image; // Retornar a imagem original em caso de falha
     }
   }

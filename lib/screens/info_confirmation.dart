@@ -10,8 +10,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:path_provider/path_provider.dart';
 import '../constants/color_app.dart';
-import '../services/DocScanner.dart';
-import '../models/DataBaseHelper.dart';
+import '../services/document_text_scanner.dart';
+import '../models/data_base_helper.dart';
 
 class InfoConfirmationScreen extends StatefulWidget {
   final List<XFile> imagesList;
@@ -32,7 +32,7 @@ class InfoConfirmationScreen extends StatefulWidget {
 class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
   List<String> _extractedTextsList = [];
   List<Alert> _alerts = [];
-  DocScanner? ds;
+  DocumentTextScanner? ds;
   String? selectedDocType;
   String dateAlertStructure = 'dd mm yyyy';
   String? dateAlertDescription;
@@ -140,7 +140,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
   Future<void> _processImages() async {
     _extractedTextsList.clear();
     for (var image in widget.imagesList) {
-      DocScanner scanner = await DocScanner.create(File(image.path));
+      DocumentTextScanner scanner = await DocumentTextScanner.create(File(image.path));
       String extractedText = await scanner.extractTextAndNormalise();
       _extractedTextsList.add(extractedText);
       scanner.dispose();
@@ -154,7 +154,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
     }
 
     final image = widget.imagesList[0];
-    ds = await DocScanner.create(File(image.path));
+    ds = await DocumentTextScanner.create(File(image.path));
     final normalizedText = await ds!.extractTextAndNormalise();
 
     if (_interpreter == null || _labels.isEmpty) {

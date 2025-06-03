@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:DigiDoc/models/DataBaseHelper.dart';
+import 'package:DigiDoc/models/data_base_helper.dart';
 import 'package:DigiDoc/services/notification_service.dart';
 
 void startAlertChecker(GlobalKey<NavigatorState> navigatorKey) {

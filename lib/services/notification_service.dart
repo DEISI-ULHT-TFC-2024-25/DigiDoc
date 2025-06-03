@@ -2,7 +2,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-import 'package:DigiDoc/models/DataBaseHelper.dart';
+import 'package:DigiDoc/models/data_base_helper.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
@@ -10,11 +10,16 @@ Future<void> initNotifications(GlobalKey<NavigatorState> navigatorKey) async {
   tz.initializeTimeZones();
   print('NotificationService: Inicializando notificações');
 
-  const AndroidInitializationSettings initializationSettingsAndroid =
-  AndroidInitializationSettings('@mipmap/ic_launcher');
+  const AndroidInitializationSettings androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
+    requestAlertPermission: true,
+    requestBadgePermission: true,
+    requestSoundPermission: true,
+  );
 
   const InitializationSettings initializationSettings = InitializationSettings(
-    android: initializationSettingsAndroid,
+    android: androidSettings,
+    iOS: iosSettings,
   );
 
   bool? initialized = await flutterLocalNotificationsPlugin.initialize(
@@ -28,6 +33,7 @@ Future<void> initNotifications(GlobalKey<NavigatorState> navigatorKey) async {
   );
   print('NotificationService: Inicialização concluída: $initialized');
 
+  // Solicitar permissões no Android
   final androidPlugin = flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
   if (androidPlugin != null) {
@@ -36,7 +42,23 @@ Future<void> initNotifications(GlobalKey<NavigatorState> navigatorKey) async {
     if (granted == null || !granted) {
       print('NotificationService: Permissão de notificação não concedida');
     }
+    // Solicitar permissão para alarmes exatos
+    await androidPlugin.requestExactAlarmsPermission();
   }
+
+  // Solicitar permissões no iOS
+  final iosPlugin = flutterLocalNotificationsPlugin
+      .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+  if (iosPlugin != null) {
+    await iosPlugin.requestPermissions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+  }
+
+  // Reagendar notificações ativas após inicialização
+  await rescheduleActiveNotifications();
 }
 
 Future<void> scheduleNotification({
@@ -58,8 +80,15 @@ Future<void> scheduleNotification({
     playSound: true,
   );
 
+  const DarwinNotificationDetails iosPlatformChannelSpecifics = DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+  );
+
   const NotificationDetails platformChannelSpecifics = NotificationDetails(
     android: androidPlatformChannelSpecifics,
+    iOS: iosPlatformChannelSpecifics,
   );
 
   final tzScheduledDate = tz.TZDateTime.from(scheduledDate, tz.local);
@@ -99,8 +128,15 @@ Future<void> showImmediateNotification({
     playSound: true,
   );
 
+  const DarwinNotificationDetails iosPlatformChannelSpecifics = DarwinNotificationDetails(
+    presentAlert: true,
+    presentBadge: true,
+    presentSound: true,
+  );
+
   const NotificationDetails platformChannelSpecifics = NotificationDetails(
     android: androidPlatformChannelSpecifics,
+    iOS: iosPlatformChannelSpecifics,
   );
 
   try {
@@ -139,6 +175,7 @@ Future<void> rescheduleActiveNotifications() async {
       final alertDate = DateTime.parse(alert['date'] as String);
       final alertId = alert['alert_id'] as int;
       final alertName = alert['name'] as String;
+      final documentName = alert['document_type_name'] as String? ?? 'Documento';
 
       if (alertDate.isAfter(DateTime.now())) {
         await scheduleNotification(
@@ -155,7 +192,7 @@ Future<void> rescheduleActiveNotifications() async {
           await scheduleNotification(
             id: alertId + 1000,
             title: 'Lembrete: Prazo do Documento',
-            body: 'Lembrete: $alertName',
+            body: 'Lembrete: $alertName para $documentName',
             scheduledDate: reminderDate,
             payload: '/alerts',
           );

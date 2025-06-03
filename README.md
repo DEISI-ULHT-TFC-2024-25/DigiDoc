@@ -1,8 +1,8 @@
 # 📄 DigiDoc
 
-DigiDoc é uma aplicação Flutter pensada para gerir documentos pessoais de forma simples, segura e inteligente. Com reconhecimento de documentos via imagem, notificações automáticas de expiração e organização por dossiês, o DigiDoc torna o caos dos papéis em organização digital.
+DigiDoc é uma aplicação Flutter pensada para gerir documentos pessoais de forma simples, segura e inteligente. Com reconhecimento de documentos via imagem, notificações automáticas de expiração e organização por dossiers, o DigiDoc torna o caos dos papéis em organização digital.
 
-## ✨ Funcionalidades
+## Funcionalidades
 
 - **Reconhecimento Inteligente de Documentos**
     - Tira ou envia foto do documento
@@ -13,9 +13,9 @@ DigiDoc é uma aplicação Flutter pensada para gerir documentos pessoais de for
     - OCR integrado para extrair texto pesquisável
     - Pesquisa rápida por palavras-chave
 
-- **Organização por Dossiês**
+- **Organização por Dossiers**
     - Associa documentos a pessoas ou entidades
-    - Cria e edita dossiês à vontade
+    - Cria e edita dossiers à vontade
 
 - **Notificações de Validade**
     - Datas de expiração capturadas automaticamente para documentos predefinidos
@@ -25,17 +25,19 @@ DigiDoc é uma aplicação Flutter pensada para gerir documentos pessoais de for
     - Acesso protegido por código
     - Armazenamento local com `sqflite`
 
-## 🛠️ Tecnologias Utilizadas
+## Tecnologias Utilizadas
 
 - Flutter
 - SQLite (sqflite)
 - Teachable Machine (classificação de imagens)
 - ML Kit Google
-- flutter_local_notifications
+- Futter Local Notifications
 
-## 🚀 Como Usar
+## Testar a Aplicação
+[digidoc.apk](build/app/outputs/flutter-apk/digidoc.apk)
 
-1. Clone o repositório:
+
+Clone o repositório:
    ```bash
    git clone https://github.com/realbrunoramos/digidoc-repository.git
 

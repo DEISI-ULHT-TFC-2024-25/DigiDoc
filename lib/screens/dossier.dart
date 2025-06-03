@@ -3,7 +3,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../constants/color_app.dart';
-import '../models/DataBaseHelper.dart';
+import '../models/data_base_helper.dart';
 import 'capture_document_photo.dart';
 import 'upload_document.dart';
 import 'document_viewer.dart';

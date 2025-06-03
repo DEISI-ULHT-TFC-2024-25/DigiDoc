@@ -5,8 +5,8 @@ import 'package:image/image.dart' as imge;
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import '../constants/color_app.dart';
-import '../services/CatchDocument.dart';
-import '../services/CurrentStateProcessing.dart';
+import '../services/text_based_document_image_processor.dart';
+import '../services/current_state_processing.dart';
 
 class DocumentImageViewer extends StatefulWidget {
   final File? imageFile;
@@ -31,7 +31,7 @@ class DocumentImageViewer extends StatefulWidget {
 class DocumentImageViewerState extends State<DocumentImageViewer> {
   File? _selectedImage;
   File? _originalImage;
-  CatchDocument? _catchDoc;
+  TextBasedDocumentImageProcessor? _catchDoc;
   File? _lastProcessedImage;
   final double _cornerDetectionRadius = 20.0;
   List<Offset> _corners = [Offset.zero, Offset.zero, Offset.zero, Offset.zero];
@@ -71,7 +71,7 @@ class DocumentImageViewerState extends State<DocumentImageViewer> {
     state.setInternalProcessing(true);
 
     try {
-      _catchDoc = CatchDocument(imageFile);
+      _catchDoc = TextBasedDocumentImageProcessor(imageFile);
       await _catchDoc!.initialize();
 
       if (_catchDoc!.finalImage == null || _catchDoc!.documentCorners == null) {

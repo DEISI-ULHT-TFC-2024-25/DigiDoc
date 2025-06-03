@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../constants/color_app.dart';
-import '../models/DataBaseHelper.dart';
+import '../models/data_base_helper.dart';
 import '../services/notification_service.dart';
 import 'package:diacritic/diacritic.dart';
 

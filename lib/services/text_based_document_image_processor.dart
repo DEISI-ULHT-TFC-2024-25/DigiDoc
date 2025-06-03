@@ -4,7 +4,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image/image.dart' as imge;
 import 'package:path_provider/path_provider.dart';
 
-class CatchDocument {
+class TextBasedDocumentImageProcessor {
   final File _imageFile;
   late imge.Image? originalImage;
   late imge.Image? modifiedImage;
@@ -15,7 +15,7 @@ class CatchDocument {
   RecognizedText? _recognizedText;
   List<TextBlock> textGroup = [];
 
-  CatchDocument(this._imageFile);
+  TextBasedDocumentImageProcessor(this._imageFile);
 
   Future<void> initialize() async {
     try {

@@ -5,7 +5,7 @@ import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart
 import 'package:image/image.dart' as imge;
 import 'package:path_provider/path_provider.dart';
 
-class DocScanner {
+class DocumentTextScanner {
   final TextRecognizer _textRecognizer = TextRecognizer();
   late File _imageFile;
   imge.Image? originalImage;
@@ -13,24 +13,21 @@ class DocScanner {
   RecognizedText? _recognizedText;
   List<TextBlock> textGroup = [];
 
-  DocScanner._(this._imageFile);
+  DocumentTextScanner._(this._imageFile);
 
-  static Future<DocScanner> create(File imageFile) async {
-    final scanner = DocScanner._(imageFile);
+  static Future<DocumentTextScanner> create(File imageFile) async {
+    final scanner = DocumentTextScanner._(imageFile);
     await scanner._initialize();
     return scanner;
   }
 
   Future<void> _initialize() async {
     try {
-      print('Inicializando DocumentScanner para ${_imageFile.path}');
-      // Carregar a imagem original
       final imageBytes = _imageFile.readAsBytesSync();
       originalImage = imge.decodeImage(imageBytes);
       if (originalImage == null || originalImage!.width <= 0 || originalImage!.height <= 0) {
         throw Exception('Imagem inválida: Não foi possível decodificar ou dimensões inválidas');
       }
-      print('Imagem original carregada: ${originalImage!.width}x${originalImage!.height}');
 
       // Processar a imagem original para reconhecimento de texto
       await _processImage();
@@ -40,44 +37,36 @@ class DocScanner {
       if (coordinates != null) {
         modifiedImage = await getCroppedImageByCoordinates(coordinates);
         if (modifiedImage == null) {
-          print('Erro: Falha ao recortar imagem, usando imagem original');
           modifiedImage = originalImage;
         } else {
-          print('Imagem recortada: ${modifiedImage!.width}x${modifiedImage!.height}');
+
           // Salvar a imagem recortada em um arquivo temporário
           final tempDir = await getTemporaryDirectory();
           final tempPath = '${tempDir.path}/cropped_${DateTime.now().millisecondsSinceEpoch}.jpg';
           final croppedImageFile = File(tempPath)..writeAsBytesSync(imge.encodeJpg(modifiedImage!));
-          print('Imagem recortada salva em: $tempPath');
           _imageFile = croppedImageFile;
           await _processImage(); // Reprocessar a imagem recortada
         }
       } else {
-        print('Nenhum contorno detectado, usando imagem original');
         modifiedImage = originalImage;
       }
 
       // Obter o ângulo mais frequente e rotacionar a imagem
       double? angle = await getMostFreqAngle() ?? 0.0;
-      print('Ângulo mais frequente: $angle');
       if (angle != 0.0) {
         modifiedImage = _rotateImage(modifiedImage!, angle);
         if (modifiedImage == null) {
-          print('Erro: Falha ao rotacionar a imagem, usando imagem anterior');
           modifiedImage = originalImage;
         } else {
-          print('Imagem rotacionada: ${modifiedImage!.width}x${modifiedImage!.height}');
           // Salvar a imagem rotacionada
           final tempDir = await getTemporaryDirectory();
           final tempPath = '${tempDir.path}/rotated_${DateTime.now().millisecondsSinceEpoch}.jpg';
           final rotatedImageFile = File(tempPath)..writeAsBytesSync(imge.encodeJpg(modifiedImage!));
-          print('Imagem rotacionada salva em: $tempPath');
           _imageFile = rotatedImageFile;
           await _processImage();
         }
       }
     } catch (e) {
-      print('Erro ao inicializar DocumentScanner: $e');
       _recognizedText = null;
       modifiedImage = originalImage;
     }
@@ -85,28 +74,21 @@ class DocScanner {
 
   Future<void> _processImage() async {
     try {
-      print('Processando imagem: ${_imageFile.path}');
       final inputImage = InputImage.fromFilePath(_imageFile.path);
       _recognizedText = await _textRecognizer.processImage(inputImage);
-      print('Texto reconhecido: ${_recognizedText?.blocks.length ?? 0} blocos');
     } catch (e) {
-      print('Erro ao processar imagem: $e');
       _recognizedText = null;
     }
   }
 
   imge.Image? _rotateImage(imge.Image image, double angleDegrees) {
     try {
-      print('Rotacionando imagem: ${image.width}x${image.height}, ângulo: $angleDegrees');
       final rotated = imge.copyRotate(image, angle: -angleDegrees);
       if (rotated.width <= 0 || rotated.height <= 0) {
-        print('Erro: Imagem rotacionada com dimensões inválidas: ${rotated.width}x${rotated.height}');
         return null;
       }
-      print('Rotação bem-sucedida: ${rotated.width}x${rotated.height}');
       return rotated;
     } catch (e) {
-      print('Erro ao rotacionar imagem: $e');
       return null;
     }
   }
@@ -153,7 +135,6 @@ class DocScanner {
 
   Future<List<int>?> getTextCoordinatesAtImage(String text) async {
     if (_recognizedText == null) {
-      print('Nenhum texto reconhecido disponível');
       return null;
     }
     for (TextBlock block in _recognizedText!.blocks) {
@@ -163,17 +144,14 @@ class DocScanner {
         int yTopLeft = points.map((p) => p.y).reduce(math.min);
         int xBottomRight = points.map((p) => p.x).reduce(math.max);
         int yBottomRight = points.map((p) => p.y).reduce(math.max);
-        print('Coordenadas encontradas para "$text": [$xTopLeft, $yTopLeft, $xBottomRight, $yBottomRight]');
         return [xTopLeft, yTopLeft, xBottomRight, yBottomRight];
       }
     }
-    print('Texto "$text" não encontrado');
     return null;
   }
 
   Future<imge.Image?> getCroppedImageByCoordinates(List<int> coordinates) async {
     if (coordinates.length != 4) {
-      print('Erro: Coordenadas inválidas, esperado 4 valores');
       return null;
     }
 
@@ -184,7 +162,6 @@ class DocScanner {
 
     try {
       if (modifiedImage == null) {
-        print('Erro: Imagem modificada não disponível');
         return null;
       }
 
@@ -193,7 +170,6 @@ class DocScanner {
 
       if (width <= 0 || height <= 0 || xTopLeft < 0 || yTopLeft < 0 ||
           xBottomRight > modifiedImage!.width || yBottomRight > modifiedImage!.height) {
-        print('Erro: Coordenadas inválidas: [$xTopLeft, $yTopLeft, $xBottomRight, $yBottomRight]');
         return null;
       }
 
@@ -204,17 +180,14 @@ class DocScanner {
         width: width,
         height: height,
       );
-      print('Imagem recortada: ${croppedImage.width}x${croppedImage.height}');
       return croppedImage;
     } catch (e) {
-      print('Erro ao recortar imagem: $e');
       return null;
     }
   }
 
   Future<double?> getMostFreqAngle() async {
     if (_recognizedText == null || _recognizedText!.blocks.isEmpty) {
-      print('Nenhum bloco de texto encontrado');
       return null;
     }
 
@@ -242,7 +215,6 @@ class DocScanner {
     }
 
     if (angleFrequency.isEmpty) {
-      print('Nenhum ângulo válido encontrado');
       return null;
     }
 
@@ -250,25 +222,21 @@ class DocScanner {
     double mostFreqAngle = angleFrequency.entries
         .reduce((a, b) => a.value > b.value ? a : b)
         .key;
-    print('Ângulo mais frequente: $mostFreqAngle, com ${angleFrequency[mostFreqAngle]} blocos');
 
     // Popula textGroup com os blocos que têm o ângulo mais frequente
     textGroup = angleBlocks[mostFreqAngle] ?? [];
-    print('Blocos em textGroup: ${textGroup.length}');
 
     return mostFreqAngle;
   }
 
   Future<List<int>?> getTextAreaCoordinates() async {
     if (_recognizedText == null) {
-      print('Nenhum texto reconhecido disponível');
       return null;
     }
 
     // Usar textGroup se não estiver vazio, caso contrário usar todos os blocos
     List<TextBlock> blocks = textGroup.isNotEmpty ? textGroup : _recognizedText!.blocks;
     if (blocks.isEmpty) {
-      print('Nenhum bloco de texto disponível');
       return null;
     }
 
@@ -278,7 +246,6 @@ class DocScanner {
     }
 
     if (points.isEmpty) {
-      print('Nenhum ponto de canto encontrado');
       return null;
     }
 
@@ -287,11 +254,9 @@ class DocScanner {
     int yTopLeft = points.map((p) => p.dy.toInt()).reduce(math.min);
     int xBottomRight = points.map((p) => p.dx.toInt()).reduce(math.max);
     int yBottomRight = points.map((p) => p.dy.toInt()).reduce(math.max);
-    print('Coordenadas brutas: [$xTopLeft, $yTopLeft, $xBottomRight, $yBottomRight]');
 
     // Adiciona uma margem de 15% da largura/altura da imagem
     if (modifiedImage == null) {
-      print('Erro: Imagem modificada não disponível');
       return null;
     }
 
@@ -303,7 +268,6 @@ class DocScanner {
     xBottomRight = math.min(modifiedImage!.width, xBottomRight + marginX);
     yBottomRight = math.min(modifiedImage!.height, yBottomRight + marginY);
 
-    print('Coordenadas com margem: [$xTopLeft, $yTopLeft, $xBottomRight, $yBottomRight]');
     return [xTopLeft, yTopLeft, xBottomRight, yBottomRight];
   }
 

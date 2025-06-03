@@ -1,4 +1,4 @@
-import 'package:DigiDoc/screens/secutity.dart';
+import 'package:DigiDoc/screens/security.dart';
 import 'package:flutter/material.dart';
 import '../constants/color_app.dart';
 import 'about_app.dart';
