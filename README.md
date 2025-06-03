@@ -34,7 +34,7 @@ DigiDoc é uma aplicação Flutter pensada para gerir documentos pessoais de for
 - Futter Local Notifications
 
 ## Testar a Aplicação
-[Descarregar a aplicação DigiDoc](digidoc.apk)
+[Descarregar a aplicação DigiDoc](https://grupolusofona-my.sharepoint.com/:u:/g/personal/a22207718_alunos_ulht_pt/EbNCaUkKdk5AoipFRmPvmMwBmItFE-HDyCW10IViqAOsUw?e=0VFdTL)
 
 
 ## Clone o repositório:
