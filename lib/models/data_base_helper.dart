@@ -602,19 +602,21 @@ class DataBaseHelper {
     try {
       final normalizedQuery = removeDiacritics(query.toLowerCase());
       final db = await database;
+
       final result = await db.rawQuery('''
-        SELECT DISTINCT 
-          Document.document_id,
-          Document.document_type_name,
-          Document.document_name,
-          Document.extracted_texts,
-          Document.created_at,
-          Document.dossier_id
-        FROM Document
-        LEFT JOIN Image ON Image.document_id = Document.document_id
-        WHERE LOWER(removeDiacritics(Image.extracted_text)) LIKE ? 
-           OR LOWER(removeDiacritics(Document.extracted_texts)) LIKE ?
-      ''', ['%$normalizedQuery%', '%$normalizedQuery%']);
+      SELECT DISTINCT 
+        Document.document_id,
+        Document.document_type_name,
+        Document.document_name,
+        Document.extracted_texts,
+        Document.created_at,
+        Document.dossier_id
+      FROM Document
+      LEFT JOIN Image ON Image.document_id = Document.document_id
+      WHERE LOWER(Image.extracted_text) LIKE ? 
+         OR LOWER(Document.extracted_texts) LIKE ?
+    ''', ['%$normalizedQuery%', '%$normalizedQuery%']);
+
       print('DataBaseHelper: Documentos encontrados para query "$query": ${result.length}');
       return result;
     } catch (e) {
@@ -622,6 +624,7 @@ class DataBaseHelper {
       return [];
     }
   }
+
 
   Future<int> deleteDossier(int dossierId) async {
     try {
@@ -658,8 +661,8 @@ class DataBaseHelper {
       final invalidDocuments = await db.rawQuery('''
         SELECT document_id, dossier_id 
         FROM Document 
-        WHERE dossier_id NOT IN (SELECT dossier_id FROM Dossier)
-      ''');
+        WHERE dossier_id NOT IN (SELECT dossier_id FROM Dossier)''');
+
       print('DataBaseHelper: Documentos com dossierId inválido: $invalidDocuments');
       final nullDocuments = await db.query(
         'Document',

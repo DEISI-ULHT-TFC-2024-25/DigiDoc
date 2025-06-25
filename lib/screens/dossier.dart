@@ -1,12 +1,17 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image/image.dart' as img;
 import 'package:intl/intl.dart';
+import 'package:pdf_render/pdf_render.dart';
 import '../constants/color_app.dart';
 import '../models/data_base_helper.dart';
 import 'capture_document_photo.dart';
 import 'upload_document.dart';
 import 'document_viewer.dart';
+import 'info_confirmation.dart';
 
 class DossierScreen extends StatefulWidget {
   final int dossierId;
@@ -31,6 +36,7 @@ class _DossierScreenState extends State<DossierScreen> {
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
   static final Map<int, List<Map<String, dynamic>>> _documentsCache = {};
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -47,7 +53,7 @@ class _DossierScreenState extends State<DossierScreen> {
     }
     DataBaseHelper.instance.diagnoseDatabase();
     loadDocuments();
-    _searchController.addListener(_filterDocuments);
+    _searchController.addListener(_onSearchChanged);
   }
 
   Future<void> loadDocuments() async {
@@ -84,23 +90,37 @@ class _DossierScreenState extends State<DossierScreen> {
     }
   }
 
-  void _filterDocuments() async {
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _filterDocuments();
+    });
+  }
+
+  Future<void> _filterDocuments() async {
     final query = _searchController.text.trim();
     if (query.isEmpty) {
       setState(() {
         filteredDocuments = documents;
       });
+      print('Busca vazia, resetando documentos');
       return;
     }
 
     try {
-      final results = await DataBaseHelper.instance.searchDocumentsByText(query);
-      final filtered = results.where((doc) => doc['dossier_id'] == widget.dossierId).toList();
+      final results = await DataBaseHelper.instance.searchDocumentsByText(
+        query,
+        dossierId: widget.dossierId,
+      );
       setState(() {
-        filteredDocuments = filtered;
+        filteredDocuments = results;
       });
+      print('Busca "$query": ${results.length} documentos encontrados');
     } catch (e) {
       print('Erro ao filtrar documentos: $e');
+      setState(() {
+        filteredDocuments = [];
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao buscar documentos: $e')),
       );
@@ -214,9 +234,74 @@ class _DossierScreenState extends State<DossierScreen> {
     }
   }
 
+  Future<void> _pickPdfFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.single;
+        if (file.path != null) {
+          // Criar XFile a partir do arquivo PDF
+          final xFile = XFile(file.path!);
+
+          // Gerar uma imagem de visualização da primeira página do PDF
+          final pdfDoc = await PdfDocument.openFile(file.path!);
+          final page = await pdfDoc.getPage(1);
+          final pageImage = await page.render(
+            width: 800,
+            height: 800,
+            format: PdfPageImageFormat.png,
+          );
+          final imageBytes = await pageImage.bytes;
+          await page.close();
+          await pdfDoc.close();
+
+          // Comprimir a imagem de visualização
+          final decodedImage = img.decodePng(imageBytes);
+          if (decodedImage == null) {
+            throw Exception('Falha ao decodificar imagem do PDF');
+          }
+          final resizedImage = img.copyResize(decodedImage, width: 800);
+          final compressedImage = img.encodeJpg(resizedImage, quality: 85);
+
+          // Salvar a imagem comprimida temporariamente para criar um XFile
+          final tempDir = await getTemporaryDirectory();
+          final tempImagePath = '${tempDir.path}/pdf_preview_${file.name}.jpg';
+          await File(tempImagePath).writeAsBytes(compressedImage);
+          final previewXFile = XFile(tempImagePath);
+
+          // Navegar para InfoConfirmationScreen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => InfoConfirmationScreen(
+                imagesList: [previewXFile], // Enviar a imagem de visualização
+                dossierId: widget.dossierId,
+                dossierName: widget.dossierName,
+              ),
+            ),
+          ).then((_) {
+            _documentsCache.remove(widget.dossierId);
+            loadDocuments();
+          });
+        }
+      }
+    } catch (e) {
+      print('Erro ao selecionar PDF: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao selecionar PDF: $e')),
+      );
+    }
+  }
+
   @override
   void dispose() {
-    _searchController.removeListener(_filterDocuments);
+    _debounce?.cancel();
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
   }
@@ -244,7 +329,7 @@ class _DossierScreenState extends State<DossierScreen> {
                 hintText: 'Pesquisar documentos por palavras-chave',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 filled: true,
                 fillColor: Colors.grey[200],
@@ -252,7 +337,7 @@ class _DossierScreenState extends State<DossierScreen> {
             ),
             const SizedBox(height: 10),
             const Text(
-              "Documentos Salvos",
+              'Documentos Salvos',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
@@ -260,7 +345,7 @@ class _DossierScreenState extends State<DossierScreen> {
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : filteredDocuments.isEmpty
-                  ? const Center(child: Text("Nenhum documento encontrado."))
+                  ? const Center(child: Text('Nenhum documento encontrado.'))
                   : ListView.builder(
                 itemCount: filteredDocuments.length,
                 itemBuilder: (context, index) {
@@ -268,7 +353,7 @@ class _DossierScreenState extends State<DossierScreen> {
                   final docTypeName = doc['document_type_name'] as String? ?? 'Não Definido';
                   final docName = doc['document_name'] as String? ?? 'Sem Nome';
                   final createdAt = doc['created_at'] != null
-                      ? DateFormat('dd/MM/yyyy', 'pt_PT')
+                      ? DateFormat('dd/MM/yyyy', 'pt_BR')
                       .format(DateTime.parse(doc['created_at']))
                       : 'Sem Data';
                   final thumbnailData = doc['file_data'] as Uint8List?;
@@ -306,7 +391,7 @@ class _DossierScreenState extends State<DossierScreen> {
                               width: 80,
                               height: 80,
                               decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(8),
                                 image: thumbnailData != null
                                     ? DecorationImage(
                                   image: MemoryImage(thumbnailData),
@@ -328,25 +413,19 @@ class _DossierScreenState extends State<DossierScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          docName,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.darkerBlue,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
+                                  Text(
+                                    docName,
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.darkerBlue,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Data de Criação: $createdAt',
+                                    'Data de criação: $createdAt',
                                     style: const TextStyle(
                                       fontSize: 14,
                                       color: Colors.grey,
@@ -362,9 +441,10 @@ class _DossierScreenState extends State<DossierScreen> {
                                             width: 12,
                                             height: 12,
                                             margin: const EdgeInsets.only(right: 8),
-                                            child: snapshot.data != null
-                                                ? Icon(Icons.notifications_active)
-                                                : Icon(Icons.notifications_off),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: snapshot.data ?? Colors.grey,
+                                            ),
                                           );
                                         },
                                       ),
@@ -416,11 +496,27 @@ class _DossierScreenState extends State<DossierScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                "Galeria",
+                'PDF',
                 style: TextStyle(color: AppColors.darkerBlue, fontSize: 12),
               ),
               FloatingActionButton(
-                heroTag: "dossier_fab_upload",
+                heroTag: 'dossier_fab_pdf',
+                onPressed: _pickPdfFile,
+                backgroundColor: AppColors.darkerBlue,
+                child: const Icon(Icons.picture_as_pdf_outlined, color: Colors.white),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Galeria',
+                style: TextStyle(color: AppColors.darkerBlue, fontSize: 12),
+              ),
+              FloatingActionButton(
+                heroTag: 'dossier_fab_upload',
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -436,7 +532,7 @@ class _DossierScreenState extends State<DossierScreen> {
                   });
                 },
                 backgroundColor: AppColors.darkerBlue,
-                child: const Icon(Icons.upload_file, color: Colors.white),
+                child: const Icon(Icons.add_photo_alternate_outlined, color: Colors.white),
               ),
             ],
           ),
@@ -445,11 +541,11 @@ class _DossierScreenState extends State<DossierScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                "Foto",
+                'Foto',
                 style: TextStyle(color: AppColors.darkerBlue, fontSize: 12),
               ),
               FloatingActionButton(
-                heroTag: "dossier_fab_photo",
+                heroTag: 'dossier_fab_photo',
                 onPressed: () {
                   Navigator.push(
                     context,
@@ -466,13 +562,13 @@ class _DossierScreenState extends State<DossierScreen> {
                   });
                 },
                 backgroundColor: AppColors.darkerBlue,
-                child: const Icon(Icons.camera_alt, color: Colors.white),
+                child: const Icon(Icons.camera_alt_outlined, color: Colors.white),
               ),
             ],
           ),
           const SizedBox(height: 20),
           FloatingActionButton(
-            heroTag: "dossier_fab_main",
+            heroTag: 'dossier_fab_main',
             onPressed: _toggleExpand,
             backgroundColor: AppColors.darkerBlue,
             child: const Icon(Icons.close, color: Colors.white),
@@ -483,12 +579,12 @@ class _DossierScreenState extends State<DossierScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            "Adicionar\nDocumento",
+            'Adicionar\nDocumento',
             style: TextStyle(color: AppColors.darkerBlue, fontSize: 12),
           ),
           const SizedBox(height: 4),
           FloatingActionButton(
-            heroTag: "dossier_fab_main",
+            heroTag: 'dossier_fab_main',
             onPressed: _toggleExpand,
             backgroundColor: AppColors.darkerBlue,
             child: const Icon(Icons.add, color: Colors.white),
