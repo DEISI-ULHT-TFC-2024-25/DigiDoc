@@ -440,7 +440,8 @@ class DataBaseHelper {
       Uint8List fileData,
       Uint8List fileDataPrint,
       String extractedText,
-      int dossierId) async {
+      int dossierId)
+  async {
     try {
       if (dossierId <= 0) {
         throw Exception('Invalid dossierId: $dossierId');

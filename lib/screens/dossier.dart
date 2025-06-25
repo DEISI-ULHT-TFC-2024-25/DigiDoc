@@ -5,7 +5,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:intl/intl.dart';
-import 'package:pdf_render/pdf_render.dart';
 import '../constants/color_app.dart';
 import '../models/data_base_helper.dart';
 import 'capture_document_photo.dart';
@@ -108,10 +107,7 @@ class _DossierScreenState extends State<DossierScreen> {
     }
 
     try {
-      final results = await DataBaseHelper.instance.searchDocumentsByText(
-        query,
-        dossierId: widget.dossierId,
-      );
+      final results = await DataBaseHelper.instance.searchDocumentsByText(query);
       setState(() {
         filteredDocuments = results;
       });
@@ -230,70 +226,6 @@ class _DossierScreenState extends State<DossierScreen> {
       await loadDocuments();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Documento excluído com sucesso')),
-      );
-    }
-  }
-
-  Future<void> _pickPdfFile() async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf'],
-        allowMultiple: false,
-      );
-
-      if (result != null && result.files.isNotEmpty) {
-        final file = result.files.single;
-        if (file.path != null) {
-          // Criar XFile a partir do arquivo PDF
-          final xFile = XFile(file.path!);
-
-          // Gerar uma imagem de visualização da primeira página do PDF
-          final pdfDoc = await PdfDocument.openFile(file.path!);
-          final page = await pdfDoc.getPage(1);
-          final pageImage = await page.render(
-            width: 800,
-            height: 800,
-            format: PdfPageImageFormat.png,
-          );
-          final imageBytes = await pageImage.bytes;
-          await page.close();
-          await pdfDoc.close();
-
-          // Comprimir a imagem de visualização
-          final decodedImage = img.decodePng(imageBytes);
-          if (decodedImage == null) {
-            throw Exception('Falha ao decodificar imagem do PDF');
-          }
-          final resizedImage = img.copyResize(decodedImage, width: 800);
-          final compressedImage = img.encodeJpg(resizedImage, quality: 85);
-
-          // Salvar a imagem comprimida temporariamente para criar um XFile
-          final tempDir = await getTemporaryDirectory();
-          final tempImagePath = '${tempDir.path}/pdf_preview_${file.name}.jpg';
-          await File(tempImagePath).writeAsBytes(compressedImage);
-          final previewXFile = XFile(tempImagePath);
-
-          // Navegar para InfoConfirmationScreen
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => InfoConfirmationScreen(
-                imagesList: [previewXFile], // Enviar a imagem de visualização
-                dossierId: widget.dossierId,
-                dossierName: widget.dossierName,
-              ),
-            ),
-          ).then((_) {
-            _documentsCache.remove(widget.dossierId);
-            loadDocuments();
-          });
-        }
-      }
-    } catch (e) {
-      print('Erro ao selecionar PDF: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao selecionar PDF: $e')),
       );
     }
   }
@@ -492,22 +424,6 @@ class _DossierScreenState extends State<DossierScreen> {
           ? Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'PDF',
-                style: TextStyle(color: AppColors.darkerBlue, fontSize: 12),
-              ),
-              FloatingActionButton(
-                heroTag: 'dossier_fab_pdf',
-                onPressed: _pickPdfFile,
-                backgroundColor: AppColors.darkerBlue,
-                child: const Icon(Icons.picture_as_pdf_outlined, color: Colors.white),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
