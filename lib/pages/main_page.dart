@@ -74,7 +74,7 @@ class _MyHomePageState extends State<MyHomePage> {
           });
         },
         selectedItemColor: Theme.of(context).brightness == Brightness.dark
-            ? AppColors.darkPrimaryGradientStart
+            ? AppColors.calmWhite
             : AppColors.primaryGradientStart,
         unselectedItemColor: Theme.of(context).brightness == Brightness.dark
             ? AppColors.darkTextSecondary

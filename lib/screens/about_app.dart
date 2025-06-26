@@ -58,8 +58,10 @@ class AboutAppScreen extends StatelessWidget {
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(16.0),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkBackground
+                        : AppColors.background,
                     borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
                   ),
                   child: SingleChildScrollView(
@@ -68,19 +70,20 @@ class AboutAppScreen extends StatelessWidget {
                       children: [
                         Card(
                           elevation: 4,
+                          color: AppColors.darkBackground.withAlpha(200),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                           child: Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Column(
                               children: [
                                 Text(
-                                  'Versão Atual: 1.0.0',
-                                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w500),
+                                  'Versão Atual: 1.0.1',
+                                  style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w500, color: AppColors.calmWhite),
                                 ),
                                 const SizedBox(height: 20),
                                 ListTile(
                                   leading: const Icon(Icons.lock, color: AppColors.calmWhite),
-                                  title: Text('Política de Privacidade', style: GoogleFonts.poppins(fontSize: 16)),
+                                  title: Text('Política de Privacidade', style: GoogleFonts.poppins(fontSize: 16, color: AppColors.calmWhite)),
                                   trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
                                   onTap: () {
                                     Navigator.push(
@@ -93,7 +96,7 @@ class AboutAppScreen extends StatelessWidget {
                                 const Divider(),
                                 ListTile(
                                   leading: const Icon(Icons.email, color: AppColors.calmWhite),
-                                  title: Text('Contactar Suporte', style: GoogleFonts.poppins(fontSize: 16)),
+                                  title: Text('Contactar Suporte', style: GoogleFonts.poppins(fontSize: 16, color: AppColors.calmWhite)),
                                   subtitle: Text('Via Email ou WhatsApp', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
                                   onTap: () {
                                     showModalBottomSheet(
@@ -134,13 +137,15 @@ class AboutAppScreen extends StatelessWidget {
                         const SizedBox(height: 20),
                         Text(
                           'Notas de Atualização',
-                          style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.darkerBlue),
+                          style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.calmWhite
+                              : AppColors.darkerBlue,),
                         ),
                         const SizedBox(height: 10),
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.grey[100],
+                            color: AppColors.calmWhite.withAlpha(150),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(

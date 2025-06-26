@@ -10,6 +10,7 @@ import 'capture_document_photo.dart';
 import 'upload_document.dart';
 import 'document_viewer.dart';
 
+
 class DossierScreen extends StatefulWidget {
   final int dossierId;
   final String dossierName;
@@ -125,18 +126,18 @@ class _DossierScreenState extends State<DossierScreen> {
     if (alerts.isEmpty) return Colors.grey;
 
     final now = DateTime.now();
-    DateTime? nearestDate;
+    DateTime? farthestDate;
     for (var alert in alerts) {
       final alertDate = DateTime.parse(alert['date'] as String);
-      if (alert['is_active'] == 1 && (nearestDate == null || alertDate.isBefore(nearestDate))) {
-        nearestDate = alertDate;
+      if (alert['is_active'] == 1 && (farthestDate == null || alertDate.isAfter(farthestDate))) {
+        farthestDate = alertDate;
       }
     }
 
-    if (nearestDate == null) return Colors.grey;
-    final daysUntilDue = nearestDate.difference(now).inDays;
+    if (farthestDate == null) return Colors.grey;
+    final daysUntilDue = farthestDate.difference(now).inDays;
 
-    if (now.isAfter(nearestDate)) {
+    if (now.isAfter(farthestDate)) {
       return Colors.red;
     } else if (daysUntilDue <= 7) {
       return Colors.yellow;
@@ -189,7 +190,7 @@ class _DossierScreenState extends State<DossierScreen> {
               'Cancelar',
               style: GoogleFonts.poppins(
                 color: Theme.of(context).brightness == Brightness.dark
-                    ? AppColors.darkPrimaryGradientStart
+                    ? AppColors.calmWhite
                     : AppColors.primaryGradientStart,
               ),
             ),
@@ -261,7 +262,7 @@ class _DossierScreenState extends State<DossierScreen> {
               'Cancelar',
               style: GoogleFonts.poppins(
                 color: Theme.of(context).brightness == Brightness.dark
-                    ? AppColors.darkPrimaryGradientStart
+                    ? AppColors.calmWhite
                     : AppColors.primaryGradientStart,
               ),
             ),
@@ -327,7 +328,7 @@ class _DossierScreenState extends State<DossierScreen> {
                     suffixIcon: Icon(
                       Icons.calendar_today,
                       color: Theme.of(context).brightness == Brightness.dark
-                          ? AppColors.darkPrimaryGradientStart
+                          ? AppColors.calmWhite
                           : AppColors.primaryGradientStart,
                     ),
                     filled: true,
@@ -404,7 +405,7 @@ class _DossierScreenState extends State<DossierScreen> {
                     suffixIcon: Icon(
                       Icons.access_time,
                       color: Theme.of(context).brightness == Brightness.dark
-                          ? AppColors.darkPrimaryGradientStart
+                          ? AppColors.calmWhite
                           : AppColors.primaryGradientStart,
                     ),
                     filled: true,
@@ -497,7 +498,7 @@ class _DossierScreenState extends State<DossierScreen> {
               'Cancelar',
               style: GoogleFonts.poppins(
                 color: Theme.of(context).brightness == Brightness.dark
-                    ? AppColors.darkPrimaryGradientStart
+                    ? AppColors.calmWhite
                     : AppColors.primaryGradientStart,
               ),
             ),
@@ -594,7 +595,7 @@ class _DossierScreenState extends State<DossierScreen> {
                 TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: 'Buscar palavras-chave',
+                    hintText: 'Buscar por palavras-chave',
                     hintStyle: GoogleFonts.poppins(
                       color: Theme.of(context).brightness == Brightness.dark
                           ? AppColors.darkTextSecondary
@@ -691,120 +692,189 @@ class _DossierScreenState extends State<DossierScreen> {
                               : AppColors.cardBackground,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           margin: const EdgeInsets.symmetric(vertical: 8),
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    image: thumbnailData != null
-                                        ? DecorationImage(image: MemoryImage(thumbnailData), fit: BoxFit.cover)
-                                        : null,
-                                    color: Theme.of(context).brightness == Brightness.dark
-                                        ? AppColors.darkBackground
-                                        : AppColors.background,
-                                  ),
-                                  child: thumbnailData == null
-                                      ? Icon(
-                                    Icons.insert_drive_file,
-                                    size: 40,
-                                    color: Theme.of(context).brightness == Brightness.dark
-                                        ? AppColors.darkTextSecondary
-                                        : AppColors.textSecondary,
-                                  )
-                                      : null,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        docName,
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Theme.of(context).brightness == Brightness.dark
-                                              ? AppColors.darkTextPrimary
-                                              : AppColors.textPrimary,
-                                        ),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
+                          child: Stack(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 80,
+                                      height: 80,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        image: thumbnailData != null
+                                            ? DecorationImage(image: MemoryImage(thumbnailData), fit: BoxFit.cover)
+                                            : null,
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? AppColors.darkBackground
+                                            : AppColors.background,
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Data: $createdAt',
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 14,
-                                          color: Theme.of(context).brightness == Brightness.dark
-                                              ? AppColors.darkTextSecondary
-                                              : AppColors.textSecondary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
+                                      child: thumbnailData == null
+                                          ? Icon(
+                                        Icons.insert_drive_file,
+                                        size: 40,
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? AppColors.darkTextSecondary
+                                            : AppColors.textSecondary,
+                                      )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          FutureBuilder<Color>(
-                                            future: _getDocumentStatusColor(doc['document_id']),
+                                          Text(
+                                            docName,
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Theme.of(context).brightness == Brightness.dark
+                                                  ? AppColors.darkTextPrimary
+                                                  : AppColors.textPrimary,
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          FutureBuilder<Map<String, dynamic>>(
+                                            future: _getDocumentDetails(doc['document_id']),
                                             builder: (context, snapshot) {
-                                              return Container(
-                                                width: 12,
-                                                height: 12,
-                                                margin: const EdgeInsets.only(right: 8),
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: snapshot.data ?? Colors.grey,
-                                                ),
+                                              if (!snapshot.hasData) {
+                                                return const Text('Carregando...');
+                                              }
+                                              final details = snapshot.data!;
+                                              final alertCount = details['alertCount'] as int;
+                                              final imageCount = details['imageCount'] as int;
+
+                                              return Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Alertas: $alertCount',
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: 14,
+                                                      color: Theme.of(context).brightness == Brightness.dark
+                                                          ? AppColors.darkTextSecondary
+                                                          : AppColors.textSecondary,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    'Criado em: $createdAt',
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: 14,
+                                                      color: Theme.of(context).brightness == Brightness.dark
+                                                          ? AppColors.darkTextSecondary
+                                                          : AppColors.textSecondary,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    'Páginas: $imageCount',
+                                                    style: GoogleFonts.poppins(
+                                                      fontSize: 14,
+                                                      color: Theme.of(context).brightness == Brightness.dark
+                                                          ? AppColors.darkTextSecondary
+                                                          : AppColors.textSecondary,
+                                                    ),
+                                                  ),
+                                                ],
                                               );
                                             },
                                           ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.end,
+                                            children: [
+                                              IconButton(
+                                                icon: Icon(
+                                                  Icons.edit,
+                                                  size: 20,
+                                                  color: Theme.of(context).brightness == Brightness.dark
+                                                      ? AppColors.calmWhite
+                                                      : AppColors.primaryGradientStart,
+                                                ),
+                                                onPressed: () => _editDocumentName(doc['document_id'], docName),
+                                              ),
+                                              IconButton(
+                                                icon: Icon(
+                                                  Icons.add_alert,
+                                                  size: 20,
+                                                  color: Theme.of(context).brightness == Brightness.dark
+                                                      ? AppColors.calmWhite
+                                                      : AppColors.primaryGradientStart,
+                                                ),
+                                                onPressed: () => _addNewAlert(doc['document_id']),
+                                              ),
+                                              IconButton(
+                                                icon: Icon(
+                                                  Icons.delete,
+                                                  size: 20,
+                                                  color: Theme.of(context).brightness == Brightness.dark
+                                                      ? AppColors.calmWhite
+                                                      : AppColors.primaryGradientStart,
+                                                ),
+                                                onPressed: () => _deleteDocument(doc['document_id']),
+                                              ),
+                                            ],
+                                          ),
                                         ],
                                       ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.edit,
-                                              size: 20,
-                                              color: Theme.of(context).brightness == Brightness.dark
-                                                  ? AppColors.calmWhite
-                                                  : AppColors.primaryGradientStart,
-                                            ),
-                                            onPressed: () => _editDocumentName(doc['document_id'], docName),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.add_alert,
-                                              size: 20,
-                                              color: Theme.of(context).brightness == Brightness.dark
-                                                  ? AppColors.calmWhite
-                                                  : AppColors.primaryGradientStart,
-                                            ),
-                                            onPressed: () => _addNewAlert(doc['document_id']),
-                                          ),
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.delete,
-                                              size: 20,
-                                              color: Theme.of(context).brightness == Brightness.dark
-                                                  ? AppColors.calmWhite
-                                                  : AppColors.primaryGradientStart,
-                                            ),
-                                            onPressed: () => _deleteDocument(doc['document_id']),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
+                              ),
+                              Positioned(
+                                left: 8,
+                                bottom: 8,
+                                child: FutureBuilder<Map<String, dynamic>>(
+                                  future: _getDocumentDetails(doc['document_id']),
+                                  builder: (context, snapshot) {
+                                    if (!snapshot.hasData) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    final details = snapshot.data!;
+                                    final farthestDate = details['farthestDate'] as DateTime?;
+                                    final statusColor = details['statusColor'] as Color;
+
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? AppColors.darkCardBackground
+                                            : AppColors.cardBackground,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 12,
+                                            height: 12,
+                                            margin: const EdgeInsets.only(right: 4),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: statusColor,
+                                            ),
+                                          ),
+                                          Text(
+                                            farthestDate != null
+                                                ? DateFormat('dd/MM/yyyy', 'pt_BR').format(farthestDate)
+                                                : 'Sem Alerta(s)',
+                                            style: GoogleFonts.poppins(
+                                              fontSize: 12,
+                                              color: Theme.of(context).brightness == Brightness.dark
+                                                  ? AppColors.darkTextSecondary
+                                                  : AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );
@@ -934,5 +1004,51 @@ class _DossierScreenState extends State<DossierScreen> {
     setState(() {
       _isExpanded = !_isExpanded;
     });
+  }
+
+  Future<Map<String, dynamic>> _getDocumentDetails(int documentId) async {
+    final alerts = await DataBaseHelper.instance.getAlertsForDocument(documentId);
+    final alertCount = alerts.length;
+    final now = DateTime.now();
+    DateTime? farthestDate;
+    Color statusColor = Colors.grey;
+
+    if (alerts.isNotEmpty) {
+      for (var alert in alerts) {
+        final alertDate = DateTime.parse(alert['date'] as String);
+        if (alert['is_active'] == 1 && (farthestDate == null || alertDate.isAfter(farthestDate))) {
+          farthestDate = alertDate;
+        }
+      }
+      if (farthestDate != null) {
+        final daysUntilDue = farthestDate.difference(now).inDays;
+        statusColor = now.isAfter(farthestDate)
+            ? Colors.red
+            : daysUntilDue <= 7
+            ? Colors.yellow
+            : Colors.green;
+      }
+    }
+
+    // Placeholder for image count - replace with actual logic
+    final imageCount = await _getImageCount(documentId); // Hypothetical method
+
+    return {
+      'alertCount': alertCount,
+      'imageCount': imageCount,
+      'farthestDate': farthestDate,
+      'statusColor': statusColor,
+    };
+  }
+
+
+  Future<int> _getImageCount(int documentId) async {
+    try {
+      final imageCount = await DataBaseHelper.instance.getImageCountForDocument(documentId);
+      return imageCount ?? 0; // Return 0 if null
+    } catch (e) {
+      print('Erro ao contar imagens: $e');
+      return 0; // Default to 0 on error
+    }
   }
 }

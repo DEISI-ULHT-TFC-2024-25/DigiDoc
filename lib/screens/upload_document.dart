@@ -20,6 +20,7 @@ class UploadDocumentScreen extends StatefulWidget {
 
 class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
   File? _selectedImage;
+  bool _imageAdded = false;
   List<File> _uploadedDocuments = [];
   final ImagePicker _picker = ImagePicker();
   final GlobalKey<DocumentImageViewerState> _viewerKey = GlobalKey<DocumentImageViewerState>();
@@ -49,9 +50,11 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
     );
 
     if (image != null) {
+
       Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(true);
       setState(() {
         _selectedImage = File(image.path);
+        _imageAdded = false;
       });
     }
   }
@@ -64,6 +67,11 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
       });
       Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(false);
     }
+
+    setState(() {
+      _selectedImage = null;
+      _imageAdded = true;
+    });
   }
 
   void _deleteImage(int index) {
@@ -75,12 +83,15 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
   void _startCorrection() {
     if (_selectedImage != null) {
       _viewerKey.currentState?.startCorrection();
+
     }
   }
 
   void _handleClose() {
     setState(() {
       _selectedImage = null;
+      _imageAdded = true;
+
     });
     Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(false);
   }
@@ -190,8 +201,8 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                         icon: Icon(
                           Icons.change_circle,
                           color: _selectedImage == null
-                              ? (isDarkMode ? AppColors.darkTextSecondary : Colors.grey)
-                              : (isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite),
+                              ? (isDarkMode ? AppColors.darkTextSecondary : AppColors.darkerBlue.withAlpha(100))
+                              : (isDarkMode ? AppColors.darkTextPrimary : AppColors.darkerBlue),
                           size: 50,
                         ),
                         onPressed: _selectedImage == null ? null : _startCorrection,
@@ -201,8 +212,8 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                         style: GoogleFonts.poppins(
                           fontSize: 14,
                           color: _selectedImage == null
-                              ? (isDarkMode ? AppColors.darkTextSecondary : Colors.grey)
-                              : (isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite),
+                              ? (isDarkMode ? AppColors.darkTextSecondary : AppColors.darkerBlue.withAlpha(100))
+                              : (isDarkMode ? AppColors.darkTextPrimary : AppColors.darkerBlue),
                         ),
                       ),
                     ],
@@ -213,7 +224,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                       IconButton(
                         icon: Icon(
                           _selectedImage == null ? Icons.file_upload_outlined : Icons.add_photo_alternate,
-                          color: isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite,
+                          color: isDarkMode ? AppColors.darkTextPrimary : AppColors.darkerBlue,
                           size: 50,
                         ),
                         onPressed: _selectedImage == null ? _uploadImage : _addDocument,
@@ -222,7 +233,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                         _selectedImage == null ? "Carregar" : "Adicionar",
                         style: GoogleFonts.poppins(
                           fontSize: 14,
-                          color: isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite,
+                          color: (isDarkMode ? AppColors.darkTextPrimary : AppColors.darkerBlue),
                         ),
                       ),
                     ],
@@ -233,9 +244,9 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                       IconButton(
                         icon: Icon(
                           Icons.check_circle,
-                          color: _uploadedDocuments.isNotEmpty && _selectedImage == null
-                              ? (isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite)
-                              : (isDarkMode ? AppColors.darkTextSecondary : Colors.grey),
+                          color: (_uploadedDocuments.isEmpty && _selectedImage != null) || (!_imageAdded || _uploadedDocuments.isEmpty)
+                              ? (isDarkMode ? AppColors.darkTextSecondary : AppColors.darkerBlue.withAlpha(100))
+                              : (isDarkMode ? AppColors.darkTextPrimary : AppColors.darkerBlue),
                           size: 50,
                         ),
                         onPressed: _uploadedDocuments.isNotEmpty && _selectedImage == null ? _navigateToConfirmation : null,
@@ -244,9 +255,9 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                         "Pronto",
                         style: GoogleFonts.poppins(
                           fontSize: 14,
-                          color: _uploadedDocuments.isNotEmpty && _selectedImage == null
-                              ? (isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite)
-                              : (isDarkMode ? AppColors.darkTextSecondary : Colors.grey),
+                          color: (_uploadedDocuments.isEmpty && _selectedImage != null) || (!_imageAdded || _uploadedDocuments.isEmpty)
+                              ? (isDarkMode ? AppColors.darkTextSecondary : AppColors.darkerBlue.withAlpha(100))
+                              : (isDarkMode ? AppColors.darkTextPrimary : AppColors.darkerBlue),
                         ),
                       ),
                     ],

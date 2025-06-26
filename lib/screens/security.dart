@@ -61,7 +61,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
             return AlertDialog(
               title: Text(
                 isChangingPin ? 'Mudar PIN de Acesso' : 'Criar PIN de Acesso',
-                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppColors.darkerBlue),
+                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.calmWhite
+                    : AppColors.darkerBlue),
               ),
               content: Form(
                 key: formKey,
@@ -121,7 +123,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
                       CheckboxListTile(
                         title: Text(
                           'Usar Biometria',
-                          style: GoogleFonts.poppins(color: AppColors.darkerBlue),
+                          style: GoogleFonts.poppins(color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.calmWhite
+                              : AppColors.darkerBlue),
                         ),
                         value: localUseBiometric,
                         onChanged: (value) {
@@ -130,7 +134,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                           });
                         },
                         activeColor: AppColors.primaryGradientStart,
-                        checkColor: Colors.white,
+                        checkColor: AppColors.darkBackground,
                       ),
                     ],
                   ),
@@ -146,7 +150,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
                   },
                   child: Text(
                     'Cancelar',
-                    style: GoogleFonts.poppins(color: AppColors.darkerBlue),
+                    style: GoogleFonts.poppins(color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.calmWhite
+                        : AppColors.darkerBlue),
                   ),
                 ),
                 ElevatedButton(
@@ -249,7 +255,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
         return AlertDialog(
           title: Text(
             'Mudar Email',
-            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppColors.darkerBlue),
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.calmWhite
+                : AppColors.darkerBlue),
           ),
           content: Form(
             key: formKey,
@@ -329,6 +337,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AppColors.darkBackground
+          : AppColors.background,
       appBar: AppBar(
         title: Text(
           'Segurança',
@@ -344,14 +355,22 @@ class _SecurityScreenState extends State<SecurityScreen> {
             Card(
               elevation: 4,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              color: AppColors.cardBackground,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkCardBackground
+                  : AppColors.background,
               child: ListTile(
-                leading: Icon(Icons.lock, color: AppColors.primaryGradientStart),
+                leading: Icon(Icons.lock, color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.calmWhite
+                    : AppColors.darkerBlue),
                 title: Text(
                   _isPinSet ? 'Mudar PIN de Acesso' : 'Criar PIN de Acesso',
-                  style: GoogleFonts.poppins(fontSize: 16, color: AppColors.darkerBlue),
+                  style: GoogleFonts.poppins(fontSize: 16, color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.calmWhite
+                      : AppColors.darkerBlue),
                 ),
-                trailing: Icon(Icons.arrow_forward_ios, color: AppColors.primaryGradientStart, size: 16),
+                trailing: Icon(Icons.arrow_forward_ios, color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.calmWhite
+                    : AppColors.darkerBlue, size: 16),
                 onTap: _showPinDialog,
                 contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
               ),
@@ -361,18 +380,28 @@ class _SecurityScreenState extends State<SecurityScreen> {
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                color: AppColors.cardBackground,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkCardBackground
+                    : AppColors.background,
                 child: ListTile(
-                  leading: Icon(Icons.email, color: AppColors.primaryGradientStart),
+                  leading: Icon(Icons.email, color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.calmWhite
+                      : AppColors.darkerBlue),
                   title: Text(
                     'Mudar Email',
-                    style: GoogleFonts.poppins(fontSize: 16, color: AppColors.darkerBlue),
+                    style: GoogleFonts.poppins(fontSize: 16, color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.calmWhite
+                        : AppColors.darkerBlue),
                   ),
                   subtitle: Text(
                     _currentEmail!,
-                    style: GoogleFonts.poppins(fontSize: 14, color: AppColors.textSecondary),
+                    style: GoogleFonts.poppins(fontSize: 14, color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.calmWhite
+                        : AppColors.darkerBlue),
                   ),
-                  trailing: Icon(Icons.arrow_forward_ios, color: AppColors.primaryGradientStart, size: 16),
+                  trailing: Icon(Icons.arrow_forward_ios, color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.calmWhite
+                      : AppColors.darkerBlue, size: 16),
                   onTap: _showChangeEmailDialog,
                   contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
                 ),

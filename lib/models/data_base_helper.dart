@@ -740,4 +740,13 @@ class DataBaseHelper {
       print('DataBaseHelper: Erro em diagnoseDatabase: $e');
     }
   }
+
+  Future<int?> getImageCountForDocument(int documentId) async {
+    final db = await database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM Image WHERE document_id = ?',
+      [documentId],
+    );
+    return result.isNotEmpty ? Sqflite.firstIntValue(result) : 0;
+  }
 }

@@ -256,7 +256,7 @@ class _DossiersScreenState extends State<DossiersScreen> {
                       "Cancelar",
                       style: GoogleFonts.poppins(
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? AppColors.darkPrimaryGradientStart
+                            ? AppColors.calmWhite
                             : AppColors.primaryGradientStart,
                       ),
                     ),
@@ -267,7 +267,7 @@ class _DossiersScreenState extends State<DossiersScreen> {
                       "Criar",
                       style: GoogleFonts.poppins(
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? AppColors.darkPrimaryGradientStart
+                            ? AppColors.calmWhite
                             : AppColors.primaryGradientStart,
                       ),
                     ),

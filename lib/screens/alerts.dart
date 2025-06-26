@@ -180,7 +180,7 @@ class AlertsScreenState extends State<AlertsScreen> {
                       suffixIcon: Icon(
                         Icons.calendar_today,
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? AppColors.darkPrimaryGradientStart
+                            ? AppColors.calmWhite
                             : AppColors.primaryGradientStart,
                       ),
                       filled: true,
@@ -255,7 +255,7 @@ class AlertsScreenState extends State<AlertsScreen> {
                       suffixIcon: Icon(
                         Icons.access_time,
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? AppColors.darkPrimaryGradientStart
+                            ? AppColors.calmWhite
                             : AppColors.primaryGradientStart,
                       ),
                       filled: true,
@@ -346,7 +346,7 @@ class AlertsScreenState extends State<AlertsScreen> {
                 'Cancelar',
                 style: GoogleFonts.poppins(
                   color: Theme.of(context).brightness == Brightness.dark
-                      ? AppColors.darkPrimaryGradientStart
+                      ? AppColors.calmWhite
                       : AppColors.primaryGradientStart,
                 ),
               ),
@@ -458,7 +458,7 @@ class AlertsScreenState extends State<AlertsScreen> {
                 'Cancelar',
                 style: GoogleFonts.poppins(
                   color: Theme.of(context).brightness == Brightness.dark
-                      ? AppColors.darkPrimaryGradientStart
+                      ? AppColors.calmWhite
                       : AppColors.primaryGradientStart,
                 ),
               ),
@@ -539,7 +539,7 @@ class AlertsScreenState extends State<AlertsScreen> {
                           prefixIcon: Icon(
                             Icons.search,
                             color: Theme.of(context).brightness == Brightness.dark
-                                ? AppColors.darkPrimaryGradientStart
+                                ? AppColors.calmWhite
                                 : AppColors.primaryGradientStart,
                           ),
                           border: OutlineInputBorder(
@@ -578,7 +578,7 @@ class AlertsScreenState extends State<AlertsScreen> {
                             : AppColors.primaryGradientStart,
                       ),
                       iconEnabledColor: Theme.of(context).brightness == Brightness.dark
-                          ? AppColors.darkPrimaryGradientStart
+                          ? AppColors.calmWhite
                           : AppColors.primaryGradientStart,
                       items: const [
                         DropdownMenuItem(value: 'date_asc', child: Text('Data (Crescente)')),

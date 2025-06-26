@@ -450,7 +450,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                       suffixIcon: Icon(
                         Icons.calendar_today,
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? AppColors.darkPrimaryGradientStart
+                            ? AppColors.calmWhite
                             : AppColors.primaryGradientStart,
                       ),
                       filled: true,
@@ -527,7 +527,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                       suffixIcon: Icon(
                         Icons.access_time,
                         color: Theme.of(context).brightness == Brightness.dark
-                            ? AppColors.darkPrimaryGradientStart
+                            ? AppColors.calmWhite
                             : AppColors.primaryGradientStart,
                       ),
                       filled: true,
@@ -620,7 +620,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                 'Cancelar',
                 style: GoogleFonts.poppins(
                   color: Theme.of(context).brightness == Brightness.dark
-                      ? AppColors.darkPrimaryGradientStart
+                      ? AppColors.calmWhite
                       : AppColors.primaryGradientStart,
                 ),
               ),
@@ -853,6 +853,9 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
     ];
 
     return Scaffold(
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AppColors.darkBackground
+          : AppColors.calmWhite,
       appBar: AppBar(
         title: Text(
           'Confirmação dos Dados',
