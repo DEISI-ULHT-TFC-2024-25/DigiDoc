@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../constants/color_app.dart';
 import '../models/data_base_helper.dart';
 import '../services/notification_service.dart';
@@ -150,7 +151,17 @@ class AlertsScreenState extends State<AlertsScreen> {
       builder: (dialogContext) {
         final formKey = GlobalKey<FormState>();
         return AlertDialog(
-          title: const Text('Editar Alerta'),
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkCardBackground
+              : AppColors.cardBackground,
+          title: Text(
+            'Editar Alerta',
+            style: GoogleFonts.poppins(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkTextPrimary
+                  : AppColors.textPrimary,
+            ),
+          ),
           content: Form(
             key: formKey,
             child: SingleChildScrollView(
@@ -159,9 +170,29 @@ class AlertsScreenState extends State<AlertsScreen> {
                 children: [
                   TextFormField(
                     controller: dateController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Data (dd/mm/aaaa)',
-                      suffixIcon: Icon(Icons.calendar_today),
+                      labelStyle: GoogleFonts.poppins(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
+                      ),
+                      suffixIcon: Icon(
+                        Icons.calendar_today,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkPrimaryGradientStart
+                            : AppColors.primaryGradientStart,
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkCardBackground.withOpacity(0.8)
+                          : AppColors.cardBackground,
+                      border: const OutlineInputBorder(),
+                    ),
+                    style: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
                     ),
                     readOnly: true,
                     onTap: () async {
@@ -174,14 +205,22 @@ class AlertsScreenState extends State<AlertsScreen> {
                         builder: (context, child) {
                           return Theme(
                             data: Theme.of(dialogContext).copyWith(
-                              colorScheme: const ColorScheme.light(
-                                primary: AppColors.darkerBlue,
+                              colorScheme: Theme.of(context).brightness == Brightness.dark
+                                  ? const ColorScheme.dark(
+                                primary: AppColors.darkPrimaryGradientStart,
+                                onPrimary: AppColors.darkTextPrimary,
+                                onSurface: AppColors.darkTextPrimary,
+                              )
+                                  : const ColorScheme.light(
+                                primary: AppColors.primaryGradientStart,
                                 onPrimary: Colors.white,
                                 onSurface: Colors.black,
                               ),
                               textButtonTheme: TextButtonThemeData(
                                 style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.darkerBlue,
+                                  foregroundColor: Theme.of(context).brightness == Brightness.dark
+                                      ? AppColors.darkPrimaryGradientStart
+                                      : AppColors.primaryGradientStart,
                                 ),
                               ),
                             ),
@@ -206,9 +245,29 @@ class AlertsScreenState extends State<AlertsScreen> {
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: timeController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Hora',
-                      suffixIcon: Icon(Icons.access_time),
+                      labelStyle: GoogleFonts.poppins(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
+                      ),
+                      suffixIcon: Icon(
+                        Icons.access_time,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkPrimaryGradientStart
+                            : AppColors.primaryGradientStart,
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkCardBackground.withOpacity(0.8)
+                          : AppColors.cardBackground,
+                      border: const OutlineInputBorder(),
+                    ),
+                    style: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
                     ),
                     readOnly: true,
                     onTap: () async {
@@ -218,14 +277,22 @@ class AlertsScreenState extends State<AlertsScreen> {
                         builder: (context, child) {
                           return Theme(
                             data: Theme.of(dialogContext).copyWith(
-                              colorScheme: const ColorScheme.light(
-                                primary: AppColors.darkerBlue,
+                              colorScheme: Theme.of(context).brightness == Brightness.dark
+                                  ? const ColorScheme.dark(
+                                primary: AppColors.darkPrimaryGradientStart,
+                                onPrimary: AppColors.darkTextPrimary,
+                                onSurface: AppColors.darkTextPrimary,
+                              )
+                                  : const ColorScheme.light(
+                                primary: AppColors.primaryGradientStart,
                                 onPrimary: Colors.white,
                                 onSurface: Colors.black,
                               ),
                               textButtonTheme: TextButtonThemeData(
                                 style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.darkerBlue,
+                                  foregroundColor: Theme.of(context).brightness == Brightness.dark
+                                      ? AppColors.darkPrimaryGradientStart
+                                      : AppColors.primaryGradientStart,
                                 ),
                               ),
                             ),
@@ -245,7 +312,24 @@ class AlertsScreenState extends State<AlertsScreen> {
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: descController,
-                    decoration: const InputDecoration(labelText: 'Descrição'),
+                    decoration: InputDecoration(
+                      labelText: 'Descrição',
+                      labelStyle: GoogleFonts.poppins(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkCardBackground.withOpacity(0.8)
+                          : AppColors.cardBackground,
+                      border: const OutlineInputBorder(),
+                    ),
+                    style: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
+                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) return 'Insira uma descrição';
                       return null;
@@ -258,7 +342,14 @@ class AlertsScreenState extends State<AlertsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancelar'),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkPrimaryGradientStart
+                      : AppColors.primaryGradientStart,
+                ),
+              ),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -315,8 +406,19 @@ class AlertsScreenState extends State<AlertsScreen> {
                   }
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
-              child: const Text('Salvar', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkPrimaryGradientStart
+                    : AppColors.primaryGradientStart,
+              ),
+              child: Text(
+                'Salvar',
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.calmWhite,
+                ),
+              ),
             ),
           ],
         );
@@ -330,12 +432,36 @@ class AlertsScreenState extends State<AlertsScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Confirmar Exclusão'),
-          content: const Text('Deseja excluir este alerta?'),
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkCardBackground
+              : AppColors.cardBackground,
+          title: Text(
+            'Confirmar Exclusão',
+            style: GoogleFonts.poppins(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkTextPrimary
+                  : AppColors.textPrimary,
+            ),
+          ),
+          content: Text(
+            'Deseja excluir este alerta?',
+            style: GoogleFonts.poppins(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkTextSecondary
+                  : AppColors.textSecondary,
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancelar'),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkPrimaryGradientStart
+                      : AppColors.primaryGradientStart,
+                ),
+              ),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -365,8 +491,19 @@ class AlertsScreenState extends State<AlertsScreen> {
                   }
                 }
               },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
-              child: const Text('Excluir', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkPrimaryGradientStart
+                    : AppColors.primaryGradientStart,
+              ),
+              child: Text(
+                'Excluir',
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.calmWhite,
+                ),
+              ),
             ),
           ],
         );
@@ -378,148 +515,248 @@ class AlertsScreenState extends State<AlertsScreen> {
   Widget build(BuildContext context) {
     print('AlertsScreen: build chamado, _isLoading: $_isLoading, _filteredAlerts: ${_filteredAlerts.length}');
     return Scaffold(
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      labelText: 'Pesquisar por documento ou descrição',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
+      body: Container(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkBackground
+            : AppColors.background,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          labelText: 'Pesquisar por documento ou descrição',
+                          labelStyle: GoogleFonts.poppins(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
+                          ),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkPrimaryGradientStart
+                                : AppColors.primaryGradientStart,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkCardBackground.withOpacity(0.8)
+                              : AppColors.cardBackground,
+                        ),
+                        style: GoogleFonts.poppins(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                DropdownButton<String>(
-                  value: _sortOption,
-                  onChanged: (String? newValue) {
-                    if (newValue != null) {
-                      setState(() {
-                        _sortOption = newValue;
-                        _filterAndSortAlerts();
-                      });
-                    }
-                  },
-                  items: const [
-                    DropdownMenuItem(value: 'date_asc', child: Text('Data (Crescente)')),
-                    DropdownMenuItem(value: 'date_desc', child: Text('Data (Decrescente)')),
-                    DropdownMenuItem(value: 'doc_name_asc', child: Text('Nome Doc (A-Z)')),
-                    DropdownMenuItem(value: 'doc_name_desc', child: Text('Nome Doc (Z-A)')),
+                    const SizedBox(width: 10),
+                    DropdownButton<String>(
+                      value: _sortOption,
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _sortOption = newValue;
+                            _filterAndSortAlerts();
+                          });
+                        }
+                      },
+                      dropdownColor: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkCardBackground
+                          : AppColors.cardBackground,
+                      style: GoogleFonts.poppins(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.primaryGradientStart,
+                      ),
+                      iconEnabledColor: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkPrimaryGradientStart
+                          : AppColors.primaryGradientStart,
+                      items: const [
+                        DropdownMenuItem(value: 'date_asc', child: Text('Data (Crescente)')),
+                        DropdownMenuItem(value: 'date_desc', child: Text('Data (Decrescente)')),
+                        DropdownMenuItem(value: 'doc_name_asc', child: Text('Nome Doc (A-Z)')),
+                        DropdownMenuItem(value: 'doc_name_desc', child: Text('Nome Doc (Z-A)')),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredAlerts.isEmpty
-                ? const Center(
-              child: Text(
-                'Nenhum alerta encontrado.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
-            )
-                : ListView.builder(
-              padding: const EdgeInsets.all(16.0),
-              itemCount: _filteredAlerts.length,
-              itemBuilder: (context, index) {
-                final alert = _filteredAlerts[index];
-                final date = DateTime.parse(alert['date']);
-                final isActive = alert['is_active'] == 1;
-                print('AlertsScreen: Renderizando alerta $index: alert_id=${alert['alert_id']}');
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8.0),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        alert['file_data'] != null
-                            ? Image.memory(
-                          Uint8List.fromList(List<int>.from(alert['file_data'])),
-                          width: 60,
-                          height: 60,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.broken_image, size: 60),
-                        )
-                            : const Icon(Icons.document_scanner, size: 60),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                alert['description'] ?? 'Sem descrição',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                  child: CircularProgressIndicator(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkPrimaryGradientStart
+                        : AppColors.primaryGradientStart,
+                  ),
+                )
+                    : _filteredAlerts.isEmpty
+                    ? Center(
+                  child: Text(
+                    'Nenhum alerta encontrado.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
+                    ),
+                  ),
+                )
+                    : ListView.builder(
+                  padding: const EdgeInsets.all(16.0),
+                  itemCount: _filteredAlerts.length,
+                  itemBuilder: (context, index) {
+                    final alert = _filteredAlerts[index];
+                    final date = DateTime.parse(alert['date']);
+                    final isActive = alert['is_active'] == 1;
+                    print('AlertsScreen: Renderizando alerta $index: alert_id=${alert['alert_id']}');
+                    return Card(
+                      elevation: 2,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkCardBackground
+                          : AppColors.cardBackground,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      margin: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            alert['file_data'] != null
+                                ? Image.memory(
+                              Uint8List.fromList(List<int>.from(alert['file_data'])),
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Icon(
+                                Icons.broken_image,
+                                size: 60,
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? AppColors.darkTextSecondary
+                                    : AppColors.textSecondary,
                               ),
-                              const SizedBox(height: 4),
-                              Row(
+                            )
+                                : Icon(
+                              Icons.document_scanner,
+                              size: 60,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.textSecondary,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Flexible(
-                                    child: Text(
-                                      'Data: ${DateFormat('dd/MM/yyyy HH:mm', 'pt_PT').format(date)}',
-                                      style: const TextStyle(fontSize: 14),
+                                  Text(
+                                    alert['description'] ?? 'Sem descrição',
+                                    style: GoogleFonts.poppins(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: Theme.of(context).brightness == Brightness.dark
+                                          ? AppColors.darkTextPrimary
+                                          : AppColors.textPrimary,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    width: 12,
-                                    height: 12,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: _getDateIndicatorColor(date),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          'Data: ${DateFormat('dd/MM/yyyy HH:mm', 'pt_PT').format(date)}',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 14,
+                                            color: Theme.of(context).brightness == Brightness.dark
+                                                ? AppColors.darkTextSecondary
+                                                : AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        width: 12,
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: _getDateIndicatorColor(date),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Text(
+                                    'Documento: ${alert['document_type_name'] ?? 'Sem documento associado'}',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      color: Theme.of(context).brightness == Brightness.dark
+                                          ? AppColors.darkTextSecondary
+                                          : AppColors.textSecondary,
                                     ),
                                   ),
                                 ],
                               ),
-                              Text(
-                                'Documento: ${alert['document_type_name'] ?? 'Sem documento associado'}',
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Switch(
-                              value: isActive,
-                              activeColor: AppColors.darkerBlue,
-                              onChanged: (value) =>
-                                  _toggleAlertActive(alert['alert_id'], value),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: AppColors.darkerBlue),
-                              onPressed: () => _editAlert(alert),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: AppColors.darkerBlue),
-                              onPressed: () => _deleteAlert(alert['alert_id']),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Switch(
+                                  value: isActive,
+                                  activeColor: Theme.of(context).brightness == Brightness.dark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.cardBackground,
+                                  activeTrackColor: Theme.of(context).brightness == Brightness.dark
+                                      ? AppColors.calmWhite
+                                      : AppColors.primaryGradientStart,
+                                  inactiveTrackColor: Theme.of(context).brightness == Brightness.dark
+                                      ? AppColors.darkTextSecondary
+                                      : AppColors.cardBackground,
+                                  inactiveThumbColor: Theme.of(context).brightness == Brightness.dark
+                                      ? AppColors.calmWhite
+                                      : AppColors.primaryGradientStart,
+                                  onChanged: (value) => _toggleAlertActive(alert['alert_id'], value),
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.edit,
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? AppColors.calmWhite
+                                        : AppColors.primaryGradientStart,
+                                  ),
+                                  onPressed: () => _editAlert(alert),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.delete,
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? AppColors.calmWhite
+                                        : AppColors.primaryGradientStart,
+                                  ),
+                                  onPressed: () => _deleteAlert(alert['alert_id']),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

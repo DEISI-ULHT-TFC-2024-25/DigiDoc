@@ -1,4 +1,3 @@
-// CaptureDocumentPhotoScreen.dart
 import 'dart:io';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../services/current_state_processing.dart';
 import '../widgets/DocumentImageViewer.dart';
 import 'info_confirmation.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../constants/color_app.dart';
 
 class CaptureDocumentPhotoScreen extends StatefulWidget {
   final int dossierId;
@@ -119,11 +120,26 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark
+          ? AppColors.darkBackground
+          : Colors.black,
       appBar: AppBar(
-        title: const Text("Tirar Foto do Documento", style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.black,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          "Tirar Foto do Documento",
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextPrimary
+                : Colors.white,
+          ),
+        ),
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkPrimaryGradientStart.withAlpha(250)
+            : Colors.black,
+        iconTheme: IconThemeData(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkTextPrimary
+              : Colors.white,
+        ),
       ),
       body: Column(
         children: [
@@ -144,11 +160,19 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
               },
               onClose: _handleClose,
             )
-                : const Center(child: CircularProgressIndicator()),
+                : Center(
+              child: CircularProgressIndicator(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkPrimaryGradientStart
+                    : Colors.white,
+              ),
+            ),
           ),
           Container(
             padding: const EdgeInsets.all(10),
-            color: Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkBackground
+                : Colors.black,
             child: Column(
               children: [
                 if (_capturedImages.isNotEmpty)
@@ -175,11 +199,19 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
                               child: GestureDetector(
                                 onTap: () => _deleteImage(index),
                                 child: Container(
-                                  decoration: const BoxDecoration(
+                                  decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    color: Colors.black,
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? AppColors.darkBackground
+                                        : Colors.black,
                                   ),
-                                  child: const Icon(Icons.close, color: Colors.white, size: 20),
+                                  child: Icon(
+                                    Icons.close,
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? AppColors.darkTextPrimary
+                                        : Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ),
@@ -197,16 +229,28 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
                         IconButton(
                           icon: Icon(
                             Icons.change_circle,
-                            color: _imgJustCaptured == null ? Colors.grey : Colors.white,
+                            color: _imgJustCaptured == null
+                                ? (Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextSecondary
+                                : Colors.grey)
+                                : (Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextPrimary
+                                : Colors.white),
                             size: 50,
                           ),
                           onPressed: _imgJustCaptured == null ? null : _startCorrection,
                         ),
                         Text(
                           "Corrigir",
-                          style: TextStyle(
+                          style: GoogleFonts.poppins(
                             fontSize: 14,
-                            color: _imgJustCaptured == null ? Colors.grey : Colors.white,
+                            color: _imgJustCaptured == null
+                                ? (Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextSecondary
+                                : Colors.grey)
+                                : (Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextPrimary
+                                : Colors.white),
                           ),
                         ),
                       ],
@@ -217,14 +261,21 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
                         IconButton(
                           icon: Icon(
                             _imgJustCaptured == null ? Icons.circle : Icons.add_circle,
-                            color: Colors.white,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextPrimary
+                                : Colors.white,
                             size: 50,
                           ),
                           onPressed: _imgJustCaptured == null ? _captureImage : _addImage,
                         ),
                         Text(
                           _imgJustCaptured == null ? "Capturar" : "Adicionar",
-                          style: const TextStyle(fontSize: 14, color: Colors.white),
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextPrimary
+                                : Colors.white,
+                          ),
                         ),
                       ],
                     ),
@@ -235,8 +286,12 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
                           icon: Icon(
                             Icons.check_circle,
                             color: _capturedImages.isNotEmpty && _imgJustCaptured == null
-                                ? Colors.white
-                                : Colors.grey,
+                                ? (Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextPrimary
+                                : Colors.white)
+                                : (Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextSecondary
+                                : Colors.grey),
                             size: 50,
                           ),
                           onPressed: _capturedImages.isNotEmpty && _imgJustCaptured == null
@@ -256,11 +311,15 @@ class _CaptureDocumentPhotoScreenState extends State<CaptureDocumentPhotoScreen>
                         ),
                         Text(
                           "Pronto",
-                          style: TextStyle(
+                          style: GoogleFonts.poppins(
                             fontSize: 14,
                             color: _capturedImages.isNotEmpty && _imgJustCaptured == null
-                                ? Colors.white
-                                : Colors.grey,
+                                ? (Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextPrimary
+                                : Colors.white)
+                                : (Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextSecondary
+                                : Colors.grey),
                           ),
                         ),
                       ],

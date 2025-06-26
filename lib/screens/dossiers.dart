@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/data_base_helper.dart';
 import '../constants/color_app.dart';
 import 'dossier.dart';
@@ -56,16 +57,47 @@ class _DossiersScreenState extends State<DossiersScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Apagar Dossiê'),
-          content: Text('Tem certeza que deseja apagar o dossiê "$dossierName"?'),
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkCardBackground
+              : AppColors.cardBackground,
+          title: Text(
+            'Apagar Dossiê',
+            style: GoogleFonts.poppins(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkTextPrimary
+                  : AppColors.textPrimary,
+            ),
+          ),
+          content: Text(
+            'Tem certeza que deseja apagar o dossiê "$dossierName"?',
+            style: GoogleFonts.poppins(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkTextSecondary
+                  : AppColors.textSecondary,
+            ),
+          ),
           actions: <Widget>[
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar'),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkPrimaryGradientStart
+                      : AppColors.primaryGradientStart,
+                ),
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Apagar'),
+              child: Text(
+                'Apagar',
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkPrimaryGradientStart
+                      : AppColors.primaryGradientStart,
+                ),
+              ),
             ),
           ],
         );
@@ -84,60 +116,92 @@ class _DossiersScreenState extends State<DossiersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: dossiers.isEmpty
-          ? const Center(child: Text("Nenhum dossier disponível."))
-          : Padding(
-        padding: const EdgeInsets.all(10),
-        child: GridView.builder(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: 1.0,
-          ),
-          itemCount: dossiers.length,
-          itemBuilder: (context, index) {
-            final dossier = dossiers[index];
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DossierScreen(
-                      dossierId: dossier['dossier_id'] ?? 0,
-                      dossierName: dossier['name'] ?? "Sem Nome",
-                      camera: widget.camera,
-                    ),
-                  ),
-                );
-              },
-              onLongPress: () {
-                deleteDossier(
-                  context,
-                  dossier['dossier_id'] ?? 0,
-                  dossier['name'] ?? "Sem Nome",
-                );
-              },
-              child: Column(
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(Icons.folder, size: 40, color: AppColors.darkerBlue),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    dossiers[index]['name'],
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                ],
+      body: Container(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkBackground
+            : AppColors.background,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: dossiers.isEmpty
+                ? Center(
+              child: Text(
+                "Nenhum dossier disponível.",
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textSecondary,
+                ),
               ),
-            );
-          },
+            )
+                : GridView.builder(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 1.0,
+              ),
+              itemCount: dossiers.length,
+              itemBuilder: (context, index) {
+                final dossier = dossiers[index];
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DossierScreen(
+                          dossierId: dossier['dossier_id'] ?? 0,
+                          dossierName: dossier['name'] ?? "Sem Nome",
+                          camera: widget.camera,
+                        ),
+                      ),
+                    );
+                  },
+                  onLongPress: () {
+                    deleteDossier(
+                      context,
+                      dossier['dossier_id'] ?? 0,
+                      dossier['name'] ?? "Sem Nome",
+                    );
+                  },
+                  child: Card(
+                    elevation: 2,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkCardBackground
+                        : AppColors.cardBackground,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.folder,
+                          size: 40,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.primaryGradientStart,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          dossiers[index]['name'],
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -146,11 +210,41 @@ class _DossiersScreenState extends State<DossiersScreen> {
             context: context,
             builder: (BuildContext context) {
               return AlertDialog(
-                title: const Text("Novo Dossier"),
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkCardBackground
+                    : AppColors.cardBackground,
+                title: Text(
+                  "Novo Dossier",
+                  style: GoogleFonts.poppins(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
+                  ),
+                ),
                 content: TextField(
                   controller: dossierController,
                   autofocus: true,
-                  decoration: const InputDecoration(hintText: 'Nome do Dossier'),
+                  decoration: InputDecoration(
+                    hintText: 'Nome do Dossier',
+                    hintStyle: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkCardBackground.withOpacity(0.8)
+                        : AppColors.cardBackground,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  style: GoogleFonts.poppins(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
+                  ),
                 ),
                 actions: <Widget>[
                   TextButton(
@@ -158,20 +252,37 @@ class _DossiersScreenState extends State<DossiersScreen> {
                       dossierController.clear();
                       Navigator.of(context).pop();
                     },
-                    child: const Text("Cancelar"),
+                    child: Text(
+                      "Cancelar",
+                      style: GoogleFonts.poppins(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkPrimaryGradientStart
+                            : AppColors.primaryGradientStart,
+                      ),
+                    ),
                   ),
                   TextButton(
                     onPressed: () => addDossier(context),
-                    child: const Text("Criar"),
+                    child: Text(
+                      "Criar",
+                      style: GoogleFonts.poppins(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkPrimaryGradientStart
+                            : AppColors.primaryGradientStart,
+                      ),
+                    ),
                   ),
                 ],
               );
             },
           );
         },
-        backgroundColor: AppColors.darkerBlue,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkPrimaryGradientStart
+            : AppColors.primaryGradientStart,
         child: const Icon(Icons.create_new_folder, color: Colors.white),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }

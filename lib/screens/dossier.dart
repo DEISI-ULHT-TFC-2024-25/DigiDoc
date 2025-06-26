@@ -1,16 +1,14 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:camera/camera.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:image/image.dart' as img;
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../constants/color_app.dart';
 import '../models/data_base_helper.dart';
 import 'capture_document_photo.dart';
 import 'upload_document.dart';
 import 'document_viewer.dart';
-import 'info_confirmation.dart';
 
 class DossierScreen extends StatefulWidget {
   final int dossierId;
@@ -36,12 +34,12 @@ class _DossierScreenState extends State<DossierScreen> {
   final TextEditingController _searchController = TextEditingController();
   static final Map<int, List<Map<String, dynamic>>> _documentsCache = {};
   Timer? _debounce;
+  final GlobalKey<FormState> _alertFormKey = GlobalKey<FormState>();
 
   @override
   void initState() {
     super.initState();
     if (widget.dossierId <= 0) {
-      print('DossierScreen iniciado com dossierId inválido: ${widget.dossierId}');
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Erro: ID do dossiê inválido')),
@@ -56,7 +54,6 @@ class _DossierScreenState extends State<DossierScreen> {
   }
 
   Future<void> loadDocuments() async {
-    print('Carregando documentos para dossierId: ${widget.dossierId}');
     try {
       if (_documentsCache.containsKey(widget.dossierId)) {
         setState(() {
@@ -64,7 +61,6 @@ class _DossierScreenState extends State<DossierScreen> {
           filteredDocuments = documents;
           _isLoading = false;
         });
-        print('Documentos carregados do cache: ${documents.length}');
         return;
       }
 
@@ -74,10 +70,8 @@ class _DossierScreenState extends State<DossierScreen> {
         filteredDocuments = docs;
         _documentsCache[widget.dossierId] = docs;
         _isLoading = false;
-        print('Carregados ${docs.length} documentos para dossierId: ${widget.dossierId}');
       });
     } catch (e) {
-      print('Erro ao carregar documentos: $e');
       setState(() {
         documents = [];
         filteredDocuments = [];
@@ -102,18 +96,21 @@ class _DossierScreenState extends State<DossierScreen> {
       setState(() {
         filteredDocuments = documents;
       });
-      print('Busca vazia, resetando documentos');
       return;
     }
 
     try {
-      final results = await DataBaseHelper.instance.searchDocumentsByText(query);
+      final results = await DataBaseHelper.instance.searchDocumentsByText(widget.dossierId, query);
       setState(() {
-        filteredDocuments = results;
+        filteredDocuments = results.map((doc) {
+          final originalDoc = documents.firstWhere((d) => d['document_id'] == doc['document_id'], orElse: () => {});
+          return {
+            ...doc,
+            'file_data': originalDoc['file_data'],
+          };
+        }).toList();
       });
-      print('Busca "$query": ${results.length} documentos encontrados');
     } catch (e) {
-      print('Erro ao filtrar documentos: $e');
       setState(() {
         filteredDocuments = [];
       });
@@ -153,18 +150,49 @@ class _DossierScreenState extends State<DossierScreen> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Editar Nome do Documento'),
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkCardBackground
+            : AppColors.cardBackground,
+        title: Text(
+          'Editar Nome do Documento',
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextPrimary
+                : AppColors.textPrimary,
+          ),
+        ),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextPrimary
+                : AppColors.textPrimary,
+          ),
+          decoration: InputDecoration(
             labelText: 'Nome do Documento',
-            border: OutlineInputBorder(),
+            labelStyle: GoogleFonts.poppins(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkTextSecondary
+                  : AppColors.textSecondary,
+            ),
+            border: const OutlineInputBorder(),
+            filled: true,
+            fillColor: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkCardBackground.withAlpha(240)
+                : AppColors.cardBackground,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.poppins(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkPrimaryGradientStart
+                    : AppColors.primaryGradientStart,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () {
@@ -176,9 +204,14 @@ class _DossierScreenState extends State<DossierScreen> {
                 );
               }
             },
-            child: const Text('Salvar'),
+            child: Text(
+              'Salvar',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.darkerBlue,
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkPrimaryGradientStart
+                  : AppColors.primaryGradientStart,
             ),
           ),
         ],
@@ -202,16 +235,43 @@ class _DossierScreenState extends State<DossierScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirmar Exclusão'),
-        content: const Text('Deseja excluir este documento? Esta ação não pode ser desfeita.'),
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkCardBackground
+            : AppColors.cardBackground,
+        title: Text(
+          'Confirmar Exclusão',
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextPrimary
+                : AppColors.textPrimary,
+          ),
+        ),
+        content: Text(
+          'Deseja excluir este documento? Esta ação não pode ser desfeita.',
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextSecondary
+                : AppColors.textSecondary,
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.poppins(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkPrimaryGradientStart
+                    : AppColors.primaryGradientStart,
+              ),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Excluir'),
+            child: Text(
+              'Excluir',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
             ),
@@ -230,6 +290,267 @@ class _DossierScreenState extends State<DossierScreen> {
     }
   }
 
+  Future<void> _addNewAlert(int documentId) async {
+    final dateController = TextEditingController();
+    final timeController = TextEditingController(text: TimeOfDay.now().format(context));
+    final descController = TextEditingController();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkCardBackground
+            : AppColors.cardBackground,
+        title: Text(
+          'Adicionar Alerta',
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextPrimary
+                : AppColors.textPrimary,
+          ),
+        ),
+        content: Form(
+          key: _alertFormKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: dateController,
+                  decoration: InputDecoration(
+                    labelText: 'Data (dd/mm/aaaa)',
+                    labelStyle: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
+                    ),
+                    suffixIcon: Icon(
+                      Icons.calendar_today,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkPrimaryGradientStart
+                          : AppColors.primaryGradientStart,
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkCardBackground.withAlpha(240)
+                        : AppColors.cardBackground,
+                    border: const OutlineInputBorder(),
+                  ),
+                  style: GoogleFonts.poppins(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
+                  ),
+                  readOnly: true,
+                  onTap: () async {
+                    final pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2100),
+                      locale: const Locale('pt', 'PT'),
+                      builder: (BuildContext context, Widget? child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: Theme.of(context).brightness == Brightness.dark
+                                ? const ColorScheme.dark(
+                              primary: AppColors.darkPrimaryGradientStart,
+                              onPrimary: AppColors.darkTextPrimary,
+                              onSurface: AppColors.darkTextPrimary,
+                            )
+                                : const ColorScheme.light(
+                              primary: AppColors.primaryGradientStart,
+                              onPrimary: Colors.white,
+                              onSurface: Colors.black,
+                            ),
+                            textButtonTheme: TextButtonThemeData(
+                              style: TextButton.styleFrom(
+                                foregroundColor: Theme.of(context).brightness == Brightness.dark
+                                    ? AppColors.darkPrimaryGradientStart
+                                    : AppColors.primaryGradientStart,
+                              ),
+                            ),
+                          ),
+                          child: Material(
+                            child: child,
+                          ),
+                        );
+                      },
+                    );
+                    if (pickedDate != null) {
+                      dateController.text = DateFormat('dd/MM/yyyy', 'pt_PT').format(pickedDate);
+                    }
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Selecione uma data';
+                    try {
+                      DateFormat('dd/MM/yyyy', 'pt_PT').parseStrict(value);
+                      return null;
+                    } catch (e) {
+                      return 'Formato inválido (use dd/mm/aaaa)';
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: timeController,
+                  decoration: InputDecoration(
+                    labelText: 'Hora',
+                    labelStyle: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
+                    ),
+                    suffixIcon: Icon(
+                      Icons.access_time,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkPrimaryGradientStart
+                          : AppColors.primaryGradientStart,
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkCardBackground.withAlpha(240)
+                        : AppColors.cardBackground,
+                    border: const OutlineInputBorder(),
+                  ),
+                  style: GoogleFonts.poppins(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
+                  ),
+                  readOnly: true,
+                  onTap: () async {
+                    final pickedTime = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.now(),
+                      builder: (BuildContext context, Widget? child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: Theme.of(context).brightness == Brightness.dark
+                                ? const ColorScheme.dark(
+                              primary: AppColors.darkPrimaryGradientStart,
+                              onPrimary: AppColors.darkTextPrimary,
+                              onSurface: AppColors.darkTextPrimary,
+                            )
+                                : const ColorScheme.light(
+                              primary: AppColors.primaryGradientStart,
+                              onPrimary: Colors.white,
+                              onSurface: Colors.black,
+                            ),
+                            textButtonTheme: TextButtonThemeData(
+                              style: TextButton.styleFrom(
+                                foregroundColor: Theme.of(context).brightness == Brightness.dark
+                                    ? AppColors.darkPrimaryGradientStart
+                                    : AppColors.primaryGradientStart,
+                              ),
+                            ),
+                          ),
+                          child: Material(
+                            child: child,
+                          ),
+                        );
+                      },
+                    );
+                    if (pickedTime != null) {
+                      timeController.text = pickedTime.format(context);
+                    }
+                  },
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Selecione uma hora';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: descController,
+                  decoration: InputDecoration(
+                    labelText: 'Descrição',
+                    labelStyle: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkCardBackground.withAlpha(240)
+                        : AppColors.cardBackground,
+                    border: const OutlineInputBorder(),
+                  ),
+                  style: GoogleFonts.poppins(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Insira uma descrição';
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancelar',
+              style: GoogleFonts.poppins(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkPrimaryGradientStart
+                    : AppColors.primaryGradientStart,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (_alertFormKey.currentState!.validate()) {
+                final date = DateFormat('dd/MM/yyyy', 'pt_PT').parseStrict(dateController.text);
+                final time = TimeOfDay.fromDateTime(
+                  DateFormat.jm('pt_PT').parse(timeController.text),
+                );
+                final alertDate = DateTime(
+                  date.year,
+                  date.month,
+                  date.day,
+                  time.hour,
+                  time.minute,
+                );
+                DataBaseHelper.instance.insertAlert(
+                  descController.text,
+                  alertDate,
+                  documentId,
+                ).then((_) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Alerta adicionado com sucesso!')),
+                  );
+                  Navigator.pop(context, true);
+                }).catchError((e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Erro ao adicionar alerta: $e')),
+                  );
+                });
+              }
+            },
+            child: Text(
+              'Salvar',
+              style: GoogleFonts.poppins(color: Colors.white),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkPrimaryGradientStart
+                  : AppColors.primaryGradientStart,
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      setState(() {});
+    }
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -244,180 +565,255 @@ class _DossierScreenState extends State<DossierScreen> {
       appBar: AppBar(
         title: Text(
           widget.dossierName,
-          style: const TextStyle(color: Colors.white),
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextPrimary
+                : AppColors.calmWhite,
+          ),
         ),
-        backgroundColor: AppColors.darkerBlue,
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkPrimaryGradientStart.withAlpha(250)
+            : AppColors.primaryGradientStart,
+        iconTheme: IconThemeData(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkTextPrimary
+              : AppColors.calmWhite,
+        ),
         centerTitle: true,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Pesquisar documentos por palavras-chave',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+      body: Container(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkBackground
+            : AppColors.background,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Buscar palavras-chave',
+                    hintStyle: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.calmWhite
+                          : AppColors.primaryGradientStart,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkCardBackground.withAlpha(240)
+                        : AppColors.cardBackground,
+                  ),
+                  style: GoogleFonts.poppins(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
+                  ),
                 ),
-                filled: true,
-                fillColor: Colors.grey[200],
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Documentos Salvos',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : filteredDocuments.isEmpty
-                  ? const Center(child: Text('Nenhum documento encontrado.'))
-                  : ListView.builder(
-                itemCount: filteredDocuments.length,
-                itemBuilder: (context, index) {
-                  final doc = filteredDocuments[index];
-                  final docTypeName = doc['document_type_name'] as String? ?? 'Não Definido';
-                  final docName = doc['document_name'] as String? ?? 'Sem Nome';
-                  final createdAt = doc['created_at'] != null
-                      ? DateFormat('dd/MM/yyyy', 'pt_BR')
-                      .format(DateTime.parse(doc['created_at']))
-                      : 'Sem Data';
-                  final thumbnailData = doc['file_data'] as Uint8List?;
-
-                  return InkWell(
-                    onTap: () async {
-                      final fileData = await DataBaseHelper.instance
-                          .getDocumentFileData(doc['document_id']);
-                      if (fileData != null && fileData['file_data_print'] != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DocumentViewerScreen(
-                              documentId: doc['document_id'],
-                              documentName: docTypeName,
-                              fileDataPrint: fileData['file_data_print'] as Uint8List,
-                            ),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Nenhum PDF disponível')),
-                        );
-                      }
-                    },
-                    child: Card(
-                      elevation: 4,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              width: 80,
-                              height: 80,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                image: thumbnailData != null
-                                    ? DecorationImage(
-                                  image: MemoryImage(thumbnailData),
-                                  fit: BoxFit.cover,
-                                )
-                                    : null,
-                                color: thumbnailData == null ? Colors.blue[100] : null,
-                              ),
-                              child: thumbnailData == null
-                                  ? const Icon(
-                                Icons.insert_drive_file,
-                                size: 40,
-                                color: Colors.blueGrey,
-                              )
-                                  : null,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    docName,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.darkerBlue,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Data de criação: $createdAt',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      FutureBuilder<Color>(
-                                        future: _getDocumentStatusColor(doc['document_id']),
-                                        builder: (context, snapshot) {
-                                          return Container(
-                                            width: 12,
-                                            height: 12,
-                                            margin: const EdgeInsets.only(right: 8),
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              color: snapshot.data ?? Colors.grey,
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.edit,
-                                          size: 20,
-                                          color: AppColors.darkerBlue,
-                                        ),
-                                        onPressed: () => _editDocumentName(
-                                            doc['document_id'], docName),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.delete,
-                                          size: 20,
-                                          color: Colors.red,
-                                        ),
-                                        onPressed: () =>
-                                            _deleteDocument(doc['document_id']),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                const SizedBox(height: 10),
+                Text(
+                  'Documentos Salvos',
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.primaryGradientStart,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: _isLoading
+                      ? Center(
+                    child: CircularProgressIndicator(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkPrimaryGradientStart
+                          : AppColors.primaryGradientStart,
+                    ),
+                  )
+                      : filteredDocuments.isEmpty
+                      ? Center(
+                    child: Text(
+                      'Nenhum documento encontrado.',
+                      style: GoogleFonts.poppins(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
                       ),
                     ),
-                  );
-                },
-              ),
+                  )
+                      : ListView.builder(
+                    itemCount: filteredDocuments.length,
+                    itemBuilder: (context, index) {
+                      final doc = filteredDocuments[index];
+                      final docTypeName = doc['document_type_name'] as String? ?? 'Não Definido';
+                      final docName = doc['document_name'] as String? ?? 'Sem Nome';
+                      final createdAt = doc['created_at'] != null
+                          ? DateFormat('dd/MM/yyyy', 'pt_BR').format(DateTime.parse(doc['created_at']))
+                          : 'Sem Data';
+                      final thumbnailData = doc['file_data'] as Uint8List?;
+
+                      return InkWell(
+                        onTap: () async {
+                          final fileData = await DataBaseHelper.instance.getDocumentFileData(doc['document_id']);
+                          if (fileData != null && fileData['file_data_print'] != null) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DocumentViewerScreen(
+                                  documentId: doc['document_id'],
+                                  documentName: docTypeName,
+                                  fileDataPrint: fileData['file_data_print'] as Uint8List,
+                                ),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Nenhum PDF disponível')),
+                            );
+                          }
+                        },
+                        child: Card(
+                          elevation: 2,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkCardBackground
+                              : AppColors.cardBackground,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    image: thumbnailData != null
+                                        ? DecorationImage(image: MemoryImage(thumbnailData), fit: BoxFit.cover)
+                                        : null,
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? AppColors.darkBackground
+                                        : AppColors.background,
+                                  ),
+                                  child: thumbnailData == null
+                                      ? Icon(
+                                    Icons.insert_drive_file,
+                                    size: 40,
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.textSecondary,
+                                  )
+                                      : null,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        docName,
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(context).brightness == Brightness.dark
+                                              ? AppColors.darkTextPrimary
+                                              : AppColors.textPrimary,
+                                        ),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Data: $createdAt',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: 14,
+                                          color: Theme.of(context).brightness == Brightness.dark
+                                              ? AppColors.darkTextSecondary
+                                              : AppColors.textSecondary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          FutureBuilder<Color>(
+                                            future: _getDocumentStatusColor(doc['document_id']),
+                                            builder: (context, snapshot) {
+                                              return Container(
+                                                width: 12,
+                                                height: 12,
+                                                margin: const EdgeInsets.only(right: 8),
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: snapshot.data ?? Colors.grey,
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.edit,
+                                              size: 20,
+                                              color: Theme.of(context).brightness == Brightness.dark
+                                                  ? AppColors.calmWhite
+                                                  : AppColors.primaryGradientStart,
+                                            ),
+                                            onPressed: () => _editDocumentName(doc['document_id'], docName),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.add_alert,
+                                              size: 20,
+                                              color: Theme.of(context).brightness == Brightness.dark
+                                                  ? AppColors.calmWhite
+                                                  : AppColors.primaryGradientStart,
+                                            ),
+                                            onPressed: () => _addNewAlert(doc['document_id']),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.delete,
+                                              size: 20,
+                                              color: Theme.of(context).brightness == Brightness.dark
+                                                  ? AppColors.calmWhite
+                                                  : AppColors.primaryGradientStart,
+                                            ),
+                                            onPressed: () => _deleteDocument(doc['document_id']),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
       floatingActionButton: _isExpanded
@@ -429,7 +825,12 @@ class _DossierScreenState extends State<DossierScreen> {
             children: [
               Text(
                 'Galeria',
-                style: TextStyle(color: AppColors.darkerBlue, fontSize: 12),
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.primaryGradientStart,
+                  fontSize: 12,
+                ),
               ),
               FloatingActionButton(
                 heroTag: 'dossier_fab_upload',
@@ -447,7 +848,9 @@ class _DossierScreenState extends State<DossierScreen> {
                     loadDocuments();
                   });
                 },
-                backgroundColor: AppColors.darkerBlue,
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkPrimaryGradientStart
+                    : AppColors.primaryGradientStart,
                 child: const Icon(Icons.add_photo_alternate_outlined, color: Colors.white),
               ),
             ],
@@ -458,7 +861,12 @@ class _DossierScreenState extends State<DossierScreen> {
             children: [
               Text(
                 'Foto',
-                style: TextStyle(color: AppColors.darkerBlue, fontSize: 12),
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.primaryGradientStart,
+                  fontSize: 12,
+                ),
               ),
               FloatingActionButton(
                 heroTag: 'dossier_fab_photo',
@@ -477,7 +885,9 @@ class _DossierScreenState extends State<DossierScreen> {
                     loadDocuments();
                   });
                 },
-                backgroundColor: AppColors.darkerBlue,
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkPrimaryGradientStart
+                    : AppColors.primaryGradientStart,
                 child: const Icon(Icons.camera_alt_outlined, color: Colors.white),
               ),
             ],
@@ -486,7 +896,9 @@ class _DossierScreenState extends State<DossierScreen> {
           FloatingActionButton(
             heroTag: 'dossier_fab_main',
             onPressed: _toggleExpand,
-            backgroundColor: AppColors.darkerBlue,
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkPrimaryGradientStart
+                : AppColors.primaryGradientStart,
             child: const Icon(Icons.close, color: Colors.white),
           ),
         ],
@@ -496,17 +908,25 @@ class _DossierScreenState extends State<DossierScreen> {
         children: [
           Text(
             'Adicionar\nDocumento',
-            style: TextStyle(color: AppColors.darkerBlue, fontSize: 12),
+            style: GoogleFonts.poppins(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkTextPrimary
+                  : AppColors.primaryGradientStart,
+              fontSize: 12,
+            ),
           ),
           const SizedBox(height: 4),
           FloatingActionButton(
             heroTag: 'dossier_fab_main',
             onPressed: _toggleExpand,
-            backgroundColor: AppColors.darkerBlue,
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkPrimaryGradientStart
+                : AppColors.primaryGradientStart,
             child: const Icon(Icons.add, color: Colors.white),
           ),
         ],
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 

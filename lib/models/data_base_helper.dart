@@ -24,7 +24,7 @@ class DataBaseHelper {
     try {
       return await openDatabase(
         path,
-        version: 9,
+        version: 10,
         onCreate: (db, version) async {
           print('DataBaseHelper: Criando banco de dados versão $version');
           await db.execute('PRAGMA foreign_keys = ON;');
@@ -48,7 +48,8 @@ class DataBaseHelper {
             user_data_id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT NOT NULL UNIQUE,
             pin_hash TEXT NULL,
-            biometric_enabled BOOLEAN NOT NULL
+            biometric_enabled BOOLEAN NOT NULL,
+            is_dark_mode BOOLEAN NOT NULL DEFAULT 0
           )
           ''');
 
@@ -154,6 +155,14 @@ class DataBaseHelper {
               print('DataBaseHelper: Valores padrão para document_name definidos');
             }
           }
+          if (oldVersion < 10) {
+            final userColumns = await db.rawQuery('PRAGMA table_info(User_data)');
+            bool hasDarkMode = userColumns.any((column) => column['name'] == 'is_dark_mode');
+            if (!hasDarkMode) {
+              await db.execute('ALTER TABLE User_data ADD COLUMN is_dark_mode BOOLEAN NOT NULL DEFAULT 0');
+              print('DataBaseHelper: Coluna is_dark_mode adicionada à tabela User_data');
+            }
+          }
         },
         onOpen: (db) async {
           print('DataBaseHelper: Banco de dados aberto');
@@ -162,13 +171,12 @@ class DataBaseHelper {
       );
     } catch (e) {
       print('DataBaseHelper: Erro ao inicializar banco de dados em $path: $e');
-      // Tentar excluir o arquivo corrompido e recriar o banco
       try {
         await deleteDatabase(path);
         print('DataBaseHelper: Banco de dados corrompido excluído, recriando...');
         return await openDatabase(
           path,
-          version: 9,
+          version: 10,
           onCreate: (db, version) async {
             print('DataBaseHelper: Recriando banco de dados versão $version');
             await db.execute('PRAGMA foreign_keys = ON;');
@@ -190,7 +198,8 @@ class DataBaseHelper {
               user_data_id INTEGER PRIMARY KEY AUTOINCREMENT,
               email TEXT NOT NULL UNIQUE,
               pin_hash TEXT NULL,
-              biometric_enabled BOOLEAN NOT NULL
+              biometric_enabled BOOLEAN NOT NULL,
+              is_dark_mode BOOLEAN NOT NULL DEFAULT 0
             )
             ''');
             await db.execute('''
@@ -221,7 +230,6 @@ class DataBaseHelper {
           },
           onUpgrade: (db, oldVersion, newVersion) async {
             print('DataBaseHelper: Atualizando banco recriado de v$oldVersion para v$newVersion');
-            // Repetir lógica de onUpgrade aqui, se necessário
           },
           onOpen: (db) async {
             print('DataBaseHelper: Banco recriado aberto');
@@ -317,6 +325,7 @@ class DataBaseHelper {
           'email': email,
           'pin_hash': pinHash,
           'biometric_enabled': biometric ? 1 : 0,
+          'is_dark_mode': 0,
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
@@ -346,6 +355,44 @@ class DataBaseHelper {
     } catch (e) {
       print('DataBaseHelper: Erro em isBiometricEnabled: $e');
       return false;
+    }
+  }
+
+  Future<bool> isDarkModeEnabled(String email) async {
+    try {
+      final db = await database;
+      final result = await db.query(
+        'User_data',
+        where: 'email = ?',
+        whereArgs: [email],
+      );
+      print('DataBaseHelper: isDarkModeEnabled, User_data: $result');
+      if (result.isNotEmpty) {
+        final darkModeEnabled = result.first['is_dark_mode'] == 1;
+        print('DataBaseHelper: Modo escuro habilitado para $email: $darkModeEnabled');
+        return darkModeEnabled;
+      }
+      print('DataBaseHelper: Nenhum usuário encontrado para $email');
+      return false;
+    } catch (e) {
+      print('DataBaseHelper: Erro em isDarkModeEnabled: $e');
+      return false;
+    }
+  }
+
+  Future<void> setDarkMode(String email, bool isDarkMode) async {
+    try {
+      final db = await database;
+      await db.update(
+        'User_data',
+        {'is_dark_mode': isDarkMode ? 1 : 0},
+        where: 'email = ?',
+        whereArgs: [email],
+      );
+      print('DataBaseHelper: Modo escuro atualizado para $email: $isDarkMode');
+    } catch (e) {
+      print('DataBaseHelper: Erro em setDarkMode: $e');
+      rethrow;
     }
   }
 
@@ -440,8 +487,7 @@ class DataBaseHelper {
       Uint8List fileData,
       Uint8List fileDataPrint,
       String extractedText,
-      int dossierId)
-  async {
+      int dossierId) async {
     try {
       if (dossierId <= 0) {
         throw Exception('Invalid dossierId: $dossierId');
@@ -599,7 +645,7 @@ class DataBaseHelper {
     }
   }
 
-  Future<List<Map<String, dynamic>>> searchDocumentsByText(String query) async {
+  Future<List<Map<String, dynamic>>> searchDocumentsByText(int dossierId, String query) async {
     try {
       final normalizedQuery = removeDiacritics(query.toLowerCase());
       final db = await database;
@@ -611,21 +657,23 @@ class DataBaseHelper {
         Document.document_name,
         Document.extracted_texts,
         Document.created_at,
-        Document.dossier_id
+        Document.dossier_id,
+        Document.file_data
       FROM Document
       LEFT JOIN Image ON Image.document_id = Document.document_id
-      WHERE LOWER(Image.extracted_text) LIKE ? 
-         OR LOWER(Document.extracted_texts) LIKE ?
-    ''', ['%$normalizedQuery%', '%$normalizedQuery%']);
+      WHERE Document.dossier_id = ? 
+        AND (LOWER(Image.extracted_text) LIKE ? 
+             OR LOWER(Document.extracted_texts) LIKE ?
+             OR LOWER(Document.document_name) LIKE ?)
+    ''', [dossierId, '%$normalizedQuery%', '%$normalizedQuery%', '%$normalizedQuery%']);
 
-      print('DataBaseHelper: Documentos encontrados para query "$query": ${result.length}');
+      print('DataBaseHelper: Documentos encontrados para query "$query" no dossier $dossierId: ${result.length}');
       return result;
     } catch (e) {
       print('DataBaseHelper: Erro em searchDocumentsByText: $e');
       return [];
     }
   }
-
 
   Future<int> deleteDossier(int dossierId) async {
     try {

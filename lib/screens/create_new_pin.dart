@@ -1,10 +1,13 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server/gmail.dart';
+import 'package:provider/provider.dart';
 import '../constants/color_app.dart';
 import '../models/data_base_helper.dart';
+import '../services/current_state_processing.dart';
 
 class CreateNewPinScreen extends StatefulWidget {
   const CreateNewPinScreen({super.key});
@@ -33,6 +36,9 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
   }
 
   Future<void> _checkUserData() async {
+    setState(() {
+      _isLoading = true;
+    });
     try {
       final userData = await DataBaseHelper.instance.query('User_data');
       print('CreateNewPinScreen: Dados do usuário carregados: $userData');
@@ -45,10 +51,23 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
         print('CreateNewPinScreen: _isPinSet: $_isPinSet, _currentEmail: $_currentEmail');
       } else {
         print('CreateNewPinScreen: Nenhum usuário encontrado em User_data');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nenhum usuário encontrado na base de dados')),
+          );
+        }
       }
     } catch (e) {
       print('CreateNewPinScreen: Erro ao carregar dados do usuário: $e');
-      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao carregar dados do usuário: $e')),
+        );
+      }
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -62,7 +81,17 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Criar Novo PIN de Acesso'),
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkCardBackground
+                  : AppColors.cardBackground,
+              title: Text(
+                'Criar Novo PIN de Acesso',
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textPrimary,
+                ),
+              ),
               content: Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -71,9 +100,29 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
                     children: [
                       TextFormField(
                         controller: _pinController,
-                        decoration: const InputDecoration(labelText: 'Novo PIN'),
+                        decoration: InputDecoration(
+                          labelText: 'Novo PIN',
+                          labelStyle: GoogleFonts.poppins(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkCardBackground.withOpacity(0.8)
+                              : AppColors.cardBackground,
+                        ),
                         obscureText: true,
                         keyboardType: TextInputType.number,
+                        style: GoogleFonts.poppins(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
+                        ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Insira o novo PIN';
@@ -84,11 +133,32 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
                           return null;
                         },
                       ),
+                      const SizedBox(height: 10),
                       TextFormField(
                         controller: _confirmPinController,
-                        decoration: const InputDecoration(labelText: 'Confirmar Novo PIN'),
+                        decoration: InputDecoration(
+                          labelText: 'Confirmar Novo PIN',
+                          labelStyle: GoogleFonts.poppins(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkCardBackground.withOpacity(0.8)
+                              : AppColors.cardBackground,
+                        ),
                         obscureText: true,
                         keyboardType: TextInputType.number,
+                        style: GoogleFonts.poppins(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
+                        ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Insira o novo PIN';
@@ -100,8 +170,18 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
                         },
                       ),
                       CheckboxListTile(
-                        title: const Text('Usar Biometria'),
+                        title: Text(
+                          'Usar Biometria',
+                          style: GoogleFonts.poppins(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
+                          ),
+                        ),
                         value: localUseBiometric,
+                        activeColor: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkPrimaryGradientStart
+                            : AppColors.darkerBlue,
                         onChanged: (value) {
                           setDialogState(() {
                             localUseBiometric = value!;
@@ -120,7 +200,14 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
                     _confirmPinController.clear();
                     newEmailController.clear();
                   },
-                  child: const Text('Cancelar'),
+                  child: Text(
+                    'Cancelar',
+                    style: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkPrimaryGradientStart
+                          : AppColors.darkerBlue,
+                    ),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: _isLoading
@@ -135,9 +222,11 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
                     try {
                       bool pinMatched = _confirmPinController.text == _pinController.text;
                       if (!pinMatched) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Os PINs não se correspondem')),
-                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Os PINs não se correspondem')),
+                          );
+                        }
                         setState(() {
                           _isLoading = false;
                         });
@@ -159,17 +248,24 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
                         _isPinSet = true;
                       });
 
-                      Navigator.pop(dialogContext);
-                      Navigator.pushNamedAndRemoveUntil(
-                        context,
-                        '/home',
-                            (route) => false,
-                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('PIN criado com sucesso')),
+                        );
+                        Navigator.pop(dialogContext);
+                        Navigator.pushNamedAndRemoveUntil(
+                          context,
+                          '/home',
+                              (route) => false,
+                        );
+                      }
                     } catch (e) {
                       print('CreateNewPinScreen: Erro ao salvar: $e');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Erro ao salvar: $e')),
-                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Erro ao salvar: $e')),
+                        );
+                      }
                     } finally {
                       setState(() {
                         _isLoading = false;
@@ -179,8 +275,22 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
                       newEmailController.clear();
                     }
                   },
-                  child: const Text('Confirmar', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkPrimaryGradientStart
+                        : AppColors.darkerBlue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Confirmar',
+                    style: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.calmWhite,
+                    ),
+                  ),
                 ),
               ],
             );
@@ -191,30 +301,34 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
   }
 
   Future<void> _sendValidationEmail(String email) async {
-
-    print("ENTROU _sendValidationEmail");
-
+    print('CreateNewPinScreen: Iniciando _sendValidationEmail para $email');
     if (email.isEmpty) {
       print('CreateNewPinScreen: E-mail vazio, não enviando validação');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('E-mail não pode estar vazio')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('E-mail não pode estar vazio')),
+        );
+      }
       return;
     }
 
     if (generatedCode == null) {
       print('CreateNewPinScreen: Código de validação não gerado');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro interno: código de validação não gerado')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro interno: código de validação não gerado')),
+        );
+      }
       return;
     }
 
     if (_currentEmail == null) {
       print('CreateNewPinScreen: Email atual não definido');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro: Email atual não definido')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro: Email atual não definido')),
+        );
+      }
       return;
     }
 
@@ -295,37 +409,39 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
         _validationCodeSent = true;
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Código de verificação enviado para o e-mail')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Código de verificação enviado para o e-mail')),
+        );
+      }
     } catch (e, stackTrace) {
       print('CreateNewPinScreen: Erro detalhado ao enviar e-mail: $e');
       print('CreateNewPinScreen: Stack trace: $stackTrace');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao enviar e-mail: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao enviar e-mail: $e')),
+        );
+      }
     }
   }
 
   Future<void> _validateEmail() async {
-    print ("ENTROU _validateEmail");
-    //if (_isLoading) return;
+    print('CreateNewPinScreen: Iniciando _validateEmail');
     final email = newEmailController.text.trim();
     if (email.isEmpty || !RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email)) {
-      print ("ENTROU _validateEmail 0");
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Insira um e-mail válido')),
-      );
-
+      print('CreateNewPinScreen: E-mail inválido: $email');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Insira um e-mail válido')),
+        );
+      }
+      return;
     }
-    print ("ENTROU _validateEmail 1");
 
     setState(() {
       _isLoading = true;
       generatedCode = (Random().nextInt(900000) + 100000).toString();
     });
-    print ("ENTROU _validateEmail 2");
 
     await _sendValidationEmail(email);
 
@@ -346,6 +462,11 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
       return userData.isNotEmpty;
     } catch (e) {
       print('CreateNewPinScreen: Erro ao verificar código: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao verificar código: $e')),
+        );
+      }
       return false;
     }
   }
@@ -358,7 +479,17 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Mudar Email'),
+              backgroundColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkCardBackground
+                  : AppColors.cardBackground,
+              title: Text(
+                'Mudar Email',
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textPrimary,
+                ),
+              ),
               content: Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -367,8 +498,28 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
                     children: [
                       TextFormField(
                         controller: newEmailController,
-                        decoration: const InputDecoration(labelText: 'Novo Email'),
+                        decoration: InputDecoration(
+                          labelText: 'Novo Email',
+                          labelStyle: GoogleFonts.poppins(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextSecondary
+                                : AppColors.textSecondary,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkCardBackground.withOpacity(0.8)
+                              : AppColors.cardBackground,
+                        ),
                         keyboardType: TextInputType.emailAddress,
+                        style: GoogleFonts.poppins(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.darkTextPrimary
+                              : AppColors.textPrimary,
+                        ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Insira um email';
@@ -383,8 +534,28 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
                         const SizedBox(height: 10),
                         TextFormField(
                           controller: codeController,
-                          decoration: const InputDecoration(labelText: 'Código de Validação'),
+                          decoration: InputDecoration(
+                            labelText: 'Código de Validação',
+                            labelStyle: GoogleFonts.poppins(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? AppColors.darkTextSecondary
+                                  : AppColors.textSecondary,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkCardBackground.withOpacity(0.8)
+                                : AppColors.cardBackground,
+                          ),
                           keyboardType: TextInputType.number,
+                          style: GoogleFonts.poppins(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.darkTextPrimary
+                                : AppColors.textPrimary,
+                          ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Insira o código de validação';
@@ -408,7 +579,14 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
                       codeController.clear();
                     });
                   },
-                  child: const Text('Cancelar'),
+                  child: Text(
+                    'Cancelar',
+                    style: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkPrimaryGradientStart
+                          : AppColors.darkerBlue,
+                    ),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: _isLoading
@@ -428,9 +606,11 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
                         final code = codeController.text.trim();
                         final isValidCode = await _verifyCode(code);
                         if (!isValidCode) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Código de validação incorreto')),
-                          );
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Código de validação incorreto')),
+                            );
+                          }
                           setState(() {
                             _isLoading = false;
                           });
@@ -455,26 +635,41 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
                           codeController.clear();
                         });
                         Navigator.pop(dialogContext);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Email alterado com sucesso')),
-                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Email alterado com sucesso')),
+                          );
+                        }
                       }
                     } catch (e) {
-                      print('CreateNewPinScreen: Erro ao processar 2: $e');
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Erro ao processar: $e')),
-                      );
+                      print('CreateNewPinScreen: Erro ao processar: $e');
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Erro ao processar: $e')),
+                        );
+                      }
                     } finally {
                       setState(() {
                         _isLoading = false;
                       });
                     }
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkPrimaryGradientStart
+                        : AppColors.darkerBlue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   child: Text(
                     _validationCodeSent ? 'Confirmar Código' : 'Confirmar',
-                    style: const TextStyle(color: Colors.white),
+                    style: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.calmWhite,
+                    ),
                   ),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
                 ),
               ],
             );
@@ -486,27 +681,110 @@ class _CreateNewPinScreenState extends State<CreateNewPinScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<CurrentStateProcessing>(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Segurança', style: TextStyle(color: Colors.white)),
-        backgroundColor: AppColors.darkerBlue,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          'Segurança',
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextPrimary
+                : AppColors.calmWhite,
+          ),
+        ),
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkPrimaryGradientStart.withAlpha(250)
+            : AppColors.darkerBlue,
+        iconTheme: IconThemeData(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkTextPrimary
+              : AppColors.calmWhite,
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            ListTile(
-              title: const Text('Criar Novo PIN'),
-              onTap: _showPinDialog,
-            ),
-            if (_currentEmail != null)
-              ListTile(
-                title: const Text('Mudar Email'),
-                subtitle: Text(_currentEmail!),
-                onTap: _showChangeEmailDialog,
+      body: Container(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? null
+            : AppColors.background,
+        child: _isLoading
+            ? Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkPrimaryGradientStart
+                : AppColors.darkerBlue,
+          ),
+        )
+            : SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Card(
+                elevation: 2,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkCardBackground
+                    : AppColors.cardBackground,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  title: Text(
+                    'Criar Novo PIN',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.arrow_forward_ios,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkPrimaryGradientStart
+                        : AppColors.darkerBlue,
+                  ),
+                  onTap: _showPinDialog,
+                ),
               ),
-          ],
+              const SizedBox(height: 8),
+              if (_currentEmail != null)
+                Card(
+                  elevation: 2,
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkCardBackground
+                      : AppColors.cardBackground,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    title: Text(
+                      'Mudar Email',
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                    subtitle: Text(
+                      _currentEmail!,
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
+                      ),
+                    ),
+                    trailing: Icon(
+                      Icons.arrow_forward_ios,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkPrimaryGradientStart
+                          : AppColors.darkerBlue,
+                    ),
+                    onTap: _showChangeEmailDialog,
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

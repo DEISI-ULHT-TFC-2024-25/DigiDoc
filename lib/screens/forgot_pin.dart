@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'package:google_fonts/google_fonts.dart';
 import '../constants/color_app.dart';
 import '../models/data_base_helper.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
+import 'package:provider/provider.dart';
+import '../services/current_state_processing.dart';
 
 class ForgotPinScreen extends StatefulWidget {
   const ForgotPinScreen({super.key});
@@ -16,6 +19,7 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
   final _codeController = TextEditingController();
   String? _email;
   String? _generatedCode;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -24,14 +28,44 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
   }
 
   Future<void> _loadUserDataAndSendCode() async {
-    final userData = await DataBaseHelper.instance.query('User_data');
-    if (userData.isNotEmpty) {
-      setState(() {
-        _email = userData.first['email'] as String?;
-      });
-      if (_email != null) {
-        _generatedCode = (Random().nextInt(900000) + 100000).toString();
-        await _sendVerificationEmail();
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final userData = await DataBaseHelper.instance.query('User_data');
+      if (userData.isNotEmpty) {
+        setState(() {
+          _email = userData.first['email'] as String?;
+        });
+        if (_email != null) {
+          _generatedCode = (Random().nextInt(900000) + 100000).toString();
+          await _sendVerificationEmail();
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Nenhum email encontrado na base de dados')),
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Nenhum usuário encontrado na base de dados')),
+          );
+        }
+      }
+    } catch (e) {
+      print('Erro ao carregar dados do usuário: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao carregar dados do usuário: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -102,27 +136,35 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
       print('Enviando e-mail de verificação para ${_email!} com código $_generatedCode');
       final sendReport = await send(message, smtpServer);
       print('E-mail enviado com sucesso: $sendReport');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Código de verificação enviado para o email')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Código de verificação enviado para o email')),
+        );
+      }
     } catch (e) {
       print('Erro ao enviar e-mail: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao enviar e-mail: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao enviar e-mail: $e')),
+        );
+      }
     }
   }
 
   void _verifyCode() {
     if (_codeController.text == _generatedCode) {
       Navigator.pushReplacementNamed(context, '/create_new_pin');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Código verificado! Você pode criar um novo PIN.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Código verificado! Você pode criar um novo PIN.')),
+        );
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Código inválido')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Código inválido')),
+        );
+      }
     }
   }
 
@@ -134,49 +176,129 @@ class _ForgotPinScreenState extends State<ForgotPinScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<CurrentStateProcessing>(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Recuperar PIN', style: TextStyle(color: Colors.white)),
-        backgroundColor: AppColors.darkerBlue,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          'Recuperar PIN',
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextPrimary
+                : AppColors.calmWhite,
+          ),
+        ),
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkPrimaryGradientStart.withOpacity(0.9)
+            : AppColors.darkerBlue,
+        iconTheme: IconThemeData(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkTextPrimary
+              : AppColors.calmWhite,
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            Text(
-              'Um código de verificação foi enviado para $_email',
-              style: const TextStyle(fontSize: 16),
+      body: Container(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? null
+            : AppColors.background,
+        child: _isLoading
+            ? Center(
+          child: CircularProgressIndicator(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkPrimaryGradientStart
+                : AppColors.darkerBlue,
+          ),
+        )
+            : Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const SizedBox(height: 20),
+                Text(
+                  _email != null
+                      ? 'Um código de verificação foi enviado para $_email'
+                      : 'Aguardando carregamento do email...',
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _codeController,
+                  decoration: InputDecoration(
+                    labelText: 'Código de Verificação',
+                    labelStyle: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextSecondary
+                          : AppColors.textSecondary,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkCardBackground.withOpacity(0.8)
+                        : AppColors.cardBackground,
+                  ),
+                  keyboardType: TextInputType.number,
+                  style: GoogleFonts.poppins(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _verifyCode,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkPrimaryGradientStart
+                        : AppColors.darkerBlue,
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Confirmar',
+                    style: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.calmWhite,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _email != null ? _loadUserDataAndSendCode : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkPrimaryGradientStart
+                        : AppColors.darkerBlue,
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Reenviar Email',
+                    style: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.calmWhite,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _codeController,
-              decoration: const InputDecoration(
-                labelText: 'Código de Verificação',
-                border: OutlineInputBorder(),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _verifyCode,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.darkerBlue,
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-              ),
-              child: const Text('Confirmar', style: TextStyle(color: Colors.white)),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _loadUserDataAndSendCode,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.darkerBlue,
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-              ),
-              child: const Text('Reenviar Email', style: TextStyle(color: Colors.white)),
-            ),
-          ],
+          ),
         ),
       ),
     );

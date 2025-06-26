@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 import '../constants/color_app.dart';
 import '../services/document_text_scanner.dart';
 import '../models/data_base_helper.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class InfoConfirmationScreen extends StatefulWidget {
   final List<XFile> imagesList;
@@ -34,6 +35,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
   List<Alert> _alerts = [];
   DocumentTextScanner? ds;
   String? selectedDocType;
+  String? customDocType;
   String dateAlertStructure = 'dd mm yyyy';
   String? dateAlertDescription;
   bool _isLoading = true;
@@ -266,22 +268,53 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Documento Não Detectado'),
-          content: const Text('Nenhum tipo de documento foi identificado automaticamente. Deseja continuar e selecionar manualmente?'),
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkCardBackground
+              : AppColors.cardBackground,
+          title: Text(
+            'Documento Não Detectado',
+            style: GoogleFonts.poppins(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkTextPrimary
+                  : AppColors.textPrimary,
+            ),
+          ),
+          content: Text(
+            'Nenhum tipo de documento foi identificado automaticamente. Deseja continuar e selecionar manualmente?',
+            style: GoogleFonts.poppins(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkTextSecondary
+                  : AppColors.textSecondary,
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
                 Navigator.pop(context);
               },
-              child: const Text('Cancelar'),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkPrimaryGradientStart
+                      : AppColors.primaryGradientStart,
+                ),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(dialogContext);
               },
-              child: const Text('Continuar'),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
+              child: Text(
+                'Continuar',
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkPrimaryGradientStart
+                    : AppColors.primaryGradientStart,
+              ),
             ),
           ],
         );
@@ -347,22 +380,24 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
   }
 
   void _addAutomaticAlert() {
-    if (_extractedTextsList.isEmpty || selectedDocType == null) return;
+    if (_extractedTextsList.isEmpty || (selectedDocType == null && customDocType == null)) return;
 
     String combinedText = _extractedTextsList.join('\n');
     List<DateTime>? dates = extractFutureDate(combinedText, dateAlertStructure);
 
     if (dates != null && dates.isNotEmpty) {
       DateTime earliestDate = dates.reduce((a, b) => a.isBefore(b) ? a : b);
-      TimeOfDay time = TimeOfDay(hour: 9, minute: 0); // Hora padrão para o alerta
-      String description = dateAlertDescription ?? 'Validade do documento $selectedDocType';
+      TimeOfDay time = TimeOfDay(hour: 9, minute: 0);
+      String description = dateAlertDescription ?? 'Validade do documento ${customDocType ?? selectedDocType ?? "desconhecido"}';
 
       setState(() {
-        _alerts.add(Alert(
-          date: earliestDate,
-          time: time,
-          description: description,
-        ));
+        if (_alerts.isEmpty) {
+          _alerts.add(Alert(
+            date: earliestDate,
+            time: time,
+            description: description,
+          ));
+        }
       });
     }
   }
@@ -386,7 +421,17 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: Text(existingAlert == null ? 'Adicionar Alerta' : 'Editar Alerta'),
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkCardBackground
+              : AppColors.cardBackground,
+          title: Text(
+            existingAlert == null ? 'Adicionar Alerta' : 'Editar Alerta',
+            style: GoogleFonts.poppins(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkTextPrimary
+                  : AppColors.textPrimary,
+            ),
+          ),
           content: Form(
             key: _alertFormKey,
             child: SingleChildScrollView(
@@ -395,9 +440,29 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                 children: [
                   TextFormField(
                     controller: dateController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Data (dd/mm/aaaa)',
-                      suffixIcon: Icon(Icons.calendar_today),
+                      labelStyle: GoogleFonts.poppins(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
+                      ),
+                      suffixIcon: Icon(
+                        Icons.calendar_today,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkPrimaryGradientStart
+                            : AppColors.primaryGradientStart,
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkCardBackground.withOpacity(0.8)
+                          : AppColors.cardBackground,
+                      border: const OutlineInputBorder(),
+                    ),
+                    style: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
                     ),
                     readOnly: true,
                     onTap: () async {
@@ -410,14 +475,22 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                         builder: (BuildContext context, Widget? child) {
                           return Theme(
                             data: Theme.of(dialogContext).copyWith(
-                              colorScheme: const ColorScheme.light(
-                                primary: AppColors.darkerBlue,
+                              colorScheme: Theme.of(context).brightness == Brightness.dark
+                                  ? const ColorScheme.dark(
+                                primary: AppColors.darkPrimaryGradientStart,
+                                onPrimary: AppColors.darkTextPrimary,
+                                onSurface: AppColors.darkTextPrimary,
+                              )
+                                  : const ColorScheme.light(
+                                primary: AppColors.primaryGradientStart,
                                 onPrimary: Colors.white,
                                 onSurface: Colors.black,
                               ),
                               textButtonTheme: TextButtonThemeData(
                                 style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.darkerBlue,
+                                  foregroundColor: Theme.of(context).brightness == Brightness.dark
+                                      ? AppColors.darkPrimaryGradientStart
+                                      : AppColors.primaryGradientStart,
                                 ),
                               ),
                             ),
@@ -444,9 +517,29 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: timeController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Hora',
-                      suffixIcon: Icon(Icons.access_time),
+                      labelStyle: GoogleFonts.poppins(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
+                      ),
+                      suffixIcon: Icon(
+                        Icons.access_time,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkPrimaryGradientStart
+                            : AppColors.primaryGradientStart,
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkCardBackground.withOpacity(0.8)
+                          : AppColors.cardBackground,
+                      border: const OutlineInputBorder(),
+                    ),
+                    style: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
                     ),
                     readOnly: true,
                     onTap: () async {
@@ -456,14 +549,22 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                         builder: (BuildContext context, Widget? child) {
                           return Theme(
                             data: Theme.of(dialogContext).copyWith(
-                              colorScheme: const ColorScheme.light(
-                                primary: AppColors.darkerBlue,
+                              colorScheme: Theme.of(context).brightness == Brightness.dark
+                                  ? const ColorScheme.dark(
+                                primary: AppColors.darkPrimaryGradientStart,
+                                onPrimary: AppColors.darkTextPrimary,
+                                onSurface: AppColors.darkTextPrimary,
+                              )
+                                  : const ColorScheme.light(
+                                primary: AppColors.primaryGradientStart,
                                 onPrimary: Colors.white,
                                 onSurface: Colors.black,
                               ),
                               textButtonTheme: TextButtonThemeData(
                                 style: TextButton.styleFrom(
-                                  foregroundColor: AppColors.darkerBlue,
+                                  foregroundColor: Theme.of(context).brightness == Brightness.dark
+                                      ? AppColors.darkPrimaryGradientStart
+                                      : AppColors.primaryGradientStart,
                                 ),
                               ),
                             ),
@@ -485,7 +586,24 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                   const SizedBox(height: 10),
                   TextFormField(
                     controller: descController,
-                    decoration: const InputDecoration(labelText: 'Descrição'),
+                    decoration: InputDecoration(
+                      labelText: 'Descrição',
+                      labelStyle: GoogleFonts.poppins(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkCardBackground.withOpacity(0.8)
+                          : AppColors.cardBackground,
+                      border: const OutlineInputBorder(),
+                    ),
+                    style: GoogleFonts.poppins(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkTextPrimary
+                          : AppColors.textPrimary,
+                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) return 'Insira uma descrição';
                       return null;
@@ -498,7 +616,14 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancelar'),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkPrimaryGradientStart
+                      : AppColors.primaryGradientStart,
+                ),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -528,9 +653,14 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                   Navigator.pop(dialogContext);
                 }
               },
-              child: const Text('Salvar'),
+              child: Text(
+                'Salvar',
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.darkerBlue,
+                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkPrimaryGradientStart
+                    : AppColors.primaryGradientStart,
               ),
             ),
           ],
@@ -561,7 +691,6 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
     final pdfData = await pdf.save();
     print('InfoConfirmationScreen: Tamanho do PDF gerado: ${pdfData.length} bytes');
 
-    // Salvar PDF não encriptado para inspeção
     final tempDir = await getTemporaryDirectory();
     final pdfFile = File('${tempDir.path}/unencrypted_pdf_${widget.dossierId}.pdf');
     await pdfFile.writeAsBytes(pdfData);
@@ -571,7 +700,6 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
   }
 
   Future<Uint8List> _encryptPdfData(Uint8List pdfData) async {
-    // Validar o PDF antes da encriptação
     if (pdfData.length < 5) {
       throw Exception('PDF gerado muito pequeno (${pdfData.length} bytes)');
     }
@@ -607,7 +735,8 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
       if (widget.dossierId <= 0) {
         throw Exception('Invalid dossierId: ${widget.dossierId}');
       }
-      if (selectedDocType == null || selectedDocType!.isEmpty) {
+      String? finalDocType = customDocType ?? selectedDocType;
+      if (finalDocType == null || finalDocType.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Selecione um tipo de documento')),
         );
@@ -634,8 +763,8 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
       final extractedText = _extractedTextsList.join('\n');
 
       final documentId = await DataBaseHelper.instance.insertDocument(
-        selectedDocType!,
-        "${selectedDocType!} de ${widget.dossierName}" ,
+        finalDocType,
+        "${finalDocType} de ${widget.dossierName}",
         fileData,
         encryptedPdfData,
         extractedText,
@@ -683,30 +812,73 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
   }
 
   bool get _isSaveButtonEnabled {
-    return selectedDocType != null && selectedDocType!.isNotEmpty;
+    return (selectedDocType != null || (customDocType != null && customDocType!.isNotEmpty)) && (!_isCustomDocActive || _customDocController.text.isNotEmpty);
   }
 
   @override
   Widget build(BuildContext context) {
+    final validDropdownValues = ['Outro', ..._docTypes.map((doc) => doc.name)];
+    if (selectedDocType != null && !validDropdownValues.contains(selectedDocType)) {
+      selectedDocType = null;
+    }
+    if (_isCustomDocActive && _customDocController.text.isNotEmpty) {
+      customDocType = _customDocController.text;
+    } else if (!_isCustomDocActive) {
+      customDocType = null;
+    }
+
     final dropdownItems = [
       ..._docTypes.map((docType) => DropdownMenuItem<String>(
         value: docType.name,
-        child: Text(docType.name),
+        child: Text(
+          docType.name,
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextPrimary
+                : AppColors.textPrimary,
+          ),
+        ),
       )),
-      const DropdownMenuItem<String>(
+      DropdownMenuItem<String>(
         value: 'Outro',
-        child: Text('Outro'),
+        child: Text(
+          'Outro',
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextPrimary
+                : AppColors.textPrimary,
+          ),
+        ),
       ),
     ];
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Confirmação dos Dados', style: TextStyle(color: Colors.white)),
-        backgroundColor: AppColors.darkerBlue,
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text(
+          'Confirmação dos Dados',
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextPrimary
+                : AppColors.calmWhite,
+          ),
+        ),
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkPrimaryGradientStart.withOpacity(0.9)
+            : AppColors.primaryGradientStart,
+        iconTheme: IconThemeData(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkTextPrimary
+              : AppColors.calmWhite,
+        ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+        child: CircularProgressIndicator(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkPrimaryGradientStart
+              : AppColors.primaryGradientStart,
+        ),
+      )
           : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -714,9 +886,12 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
           children: [
             Card(
               elevation: 4,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkCardBackground
+                  : AppColors.cardBackground,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Container(
                 height: 300,
-                color: Colors.white,
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -735,20 +910,34 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
+            Text(
               'Tipo do Documento',
-              style: TextStyle(
+              style: GoogleFonts.poppins(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.darkerBlue,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkTextPrimary
+                    : AppColors.primaryGradientStart,
               ),
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               value: selectedDocType,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
                 labelText: 'Selecione o tipo de documento',
+                labelStyle: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkTextSecondary
+                      : AppColors.textSecondary,
+                ),
+                filled: true,
+                fillColor: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkCardBackground.withOpacity(0.8)
+                    : AppColors.cardBackground,
               ),
               items: dropdownItems,
               onChanged: (value) {
@@ -757,6 +946,7 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                   _isCustomDocActive = value == 'Outro';
                   if (value != 'Outro') {
                     _customDocController.clear();
+                    customDocType = null;
                     final docType = _docTypes.firstWhere(
                           (d) => d.name == value,
                       orElse: () => DocumentType(
@@ -768,58 +958,104 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                     );
                     dateAlertStructure = docType.dateStructure;
                     dateAlertDescription = docType.alertDescription;
-                    _alerts.clear(); // Limpar alertas existentes
-                    _addAutomaticAlert(); // Adicionar alerta automático com base no novo tipo
+                    if (_alerts.isEmpty) _addAutomaticAlert();
                   } else {
                     dateAlertStructure = 'dd mm yyyy';
-                    dateAlertDescription = 'Nenhum alerta';
-                    _alerts.clear();
+                    dateAlertDescription = 'Validade do documento ${customDocType ?? "desconhecido"}';
                   }
                 });
               },
               isExpanded: true,
+              dropdownColor: Theme.of(context).brightness == Brightness.dark
+                  ? AppColors.darkCardBackground
+                  : AppColors.cardBackground,
+              style: GoogleFonts.poppins(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkTextPrimary
+                    : AppColors.textPrimary,
+              ),
             ),
             if (_isCustomDocActive) ...[
               const SizedBox(height: 10),
               TextFormField(
                 controller: _customDocController,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
                   labelText: 'Nome do documento personalizado',
+                  labelStyle: GoogleFonts.poppins(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextSecondary
+                        : AppColors.textSecondary,
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkCardBackground.withOpacity(0.8)
+                      : AppColors.cardBackground,
                 ),
                 onChanged: (value) {
                   setState(() {
-                    selectedDocType = value.isNotEmpty ? value : 'Outro';
-                    _alerts.clear();
+                    customDocType = value.isNotEmpty ? value : null;
+                    dateAlertDescription = 'Validade do documento ${value.isNotEmpty ? value : "desconhecido"}';
+                    if (_alerts.isNotEmpty) {
+                      _alerts[0] = Alert(
+                        date: _alerts[0].date,
+                        time: _alerts[0].time,
+                        description: dateAlertDescription ?? 'Sem descrição',
+                      );
+                    } else if (value.isNotEmpty) {
+                      _addAutomaticAlert();
+                    }
                   });
                 },
+                style: GoogleFonts.poppins(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkTextPrimary
+                      : AppColors.textPrimary,
+                ),
               ),
             ],
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Alertas',
-                  style: TextStyle(
+                  style: GoogleFonts.poppins(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.darkerBlue,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.primaryGradientStart,
                   ),
                 ),
                 ElevatedButton.icon(
                   onPressed: () => _addOrEditAlert(),
                   icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text('Adicionar Alerta', style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
+                  label: Text(
+                    'Adicionar Alerta',
+                    style: GoogleFonts.poppins(color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkPrimaryGradientStart
+                        : AppColors.primaryGradientStart,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             _alerts.isEmpty
-                ? const Text(
+                ? Text(
               'Nenhum alerta adicionado.',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppColors.darkTextSecondary
+                    : AppColors.textSecondary,
+              ),
             )
                 : ListView.builder(
               shrinkWrap: true,
@@ -829,31 +1065,81 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                 final alert = _alerts[index];
                 return Card(
                   margin: const EdgeInsets.symmetric(vertical: 5),
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkCardBackground
+                      : AppColors.cardBackground,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: ListTile(
                     title: Text(
                       '${DateFormat('dd/MM/yyyy', 'pt_PT').format(alert.date)} às ${alert.time.format(context)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextPrimary
+                            : AppColors.textPrimary,
+                      ),
                     ),
-                    subtitle: Text(alert.description),
+                    subtitle: Text(
+                      alert.description,
+                      style: GoogleFonts.poppins(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.darkTextSecondary
+                            : AppColors.textSecondary,
+                      ),
+                    ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.edit, color: AppColors.darkerBlue),
+                          icon: Icon(
+                            Icons.edit,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.calmWhite
+                                : AppColors.primaryGradientStart,
+                          ),
                           onPressed: () => _addOrEditAlert(existingAlert: alert, index: index),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete, color: AppColors.darkerBlue),
+                          icon: Icon(
+                            Icons.delete,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? AppColors.calmWhite
+                                : AppColors.primaryGradientStart,
+                          ),
                           onPressed: () {
                             showDialog(
                               context: context,
                               builder: (context) => AlertDialog(
-                                title: const Text('Confirmar Exclusão'),
-                                content: const Text('Deseja excluir este alerta?'),
+                                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                    ? AppColors.darkCardBackground
+                                    : AppColors.cardBackground,
+                                title: Text(
+                                  'Confirmar Exclusão',
+                                  style: GoogleFonts.poppins(
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? AppColors.darkTextPrimary
+                                        : AppColors.textPrimary,
+                                  ),
+                                ),
+                                content: Text(
+                                  'Deseja excluir este alerta?',
+                                  style: GoogleFonts.poppins(
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? AppColors.darkTextSecondary
+                                        : AppColors.textSecondary,
+                                  ),
+                                ),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(context),
-                                    child: const Text('Cancelar'),
+                                    child: Text(
+                                      'Cancelar',
+                                      style: GoogleFonts.poppins(
+                                        color: Theme.of(context).brightness == Brightness.dark
+                                            ? AppColors.darkPrimaryGradientStart
+                                            : AppColors.primaryGradientStart,
+                                      ),
+                                    ),
                                   ),
                                   ElevatedButton(
                                     onPressed: () {
@@ -862,9 +1148,14 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
                                       });
                                       Navigator.pop(context);
                                     },
-                                    child: const Text('Excluir'),
+                                    child: Text(
+                                      'Excluir',
+                                      style: GoogleFonts.poppins(color: Colors.white),
+                                    ),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.darkerBlue,
+                                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                          ? AppColors.darkPrimaryGradientStart
+                                          : AppColors.primaryGradientStart,
                                     ),
                                   ),
                                 ],
@@ -883,12 +1174,19 @@ class _InfoConfirmationScreenState extends State<InfoConfirmationScreen> {
               child: ElevatedButton(
                 onPressed: _isSaveButtonEnabled ? _saveDocument : null,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.darkerBlue,
+                  backgroundColor: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.darkPrimaryGradientStart
+                      : AppColors.primaryGradientStart,
                   padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                 ),
-                child: const Text(
+                child: Text(
                   'Guardar',
-                  style: TextStyle(fontSize: 16, color: Colors.white),
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.darkTextPrimary
+                        : AppColors.calmWhite,
+                  ),
                 ),
               ),
             ),

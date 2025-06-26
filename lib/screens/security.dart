@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import '../constants/color_app.dart';
 import '../models/data_base_helper.dart';
 import 'auth.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class SecurityScreen extends StatefulWidget {
-
   const SecurityScreen({super.key});
 
   @override
@@ -35,7 +35,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
           _isPinSet = userData.first['pin_hash'] != null;
           _currentEmail = userData.first['email'] as String?;
           _useBiometric = userData.first['biometric_enabled'] == 1;
-        });
+        }
+
+        );
         print('SecurityScreen: _isPinSet: $_isPinSet, _currentEmail: $_currentEmail');
       } else {
         print('SecurityScreen: Nenhum usuário encontrado em User_data');
@@ -57,9 +59,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text(isChangingPin
-                  ? 'Mudar PIN de Acesso'
-                  : 'Criar PIN de Acesso'),
+              title: Text(
+                isChangingPin ? 'Mudar PIN de Acesso' : 'Criar PIN de Acesso',
+                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppColors.darkerBlue),
+              ),
               content: Form(
                 key: formKey,
                 child: SingleChildScrollView(
@@ -81,7 +84,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
                         ),
                       TextFormField(
                         controller: _pinController,
-                        decoration: const InputDecoration(labelText: 'Novo PIN'),
+                        decoration: InputDecoration(
+                          labelText: 'Novo PIN',
+                          labelStyle: GoogleFonts.poppins(color: AppColors.textSecondary),
+                        ),
                         obscureText: true,
                         keyboardType: TextInputType.number,
                         validator: (value) {
@@ -97,7 +103,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
                       if (!isChangingPin)
                         TextFormField(
                           controller: _emailController,
-                          decoration: const InputDecoration(labelText: 'Email'),
+                          decoration: InputDecoration(
+                            labelText: 'Email',
+                            labelStyle: GoogleFonts.poppins(color: AppColors.textSecondary),
+                          ),
                           keyboardType: TextInputType.emailAddress,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
@@ -110,13 +119,18 @@ class _SecurityScreenState extends State<SecurityScreen> {
                           },
                         ),
                       CheckboxListTile(
-                        title: const Text('Usar Biometria'),
+                        title: Text(
+                          'Usar Biometria',
+                          style: GoogleFonts.poppins(color: AppColors.darkerBlue),
+                        ),
                         value: localUseBiometric,
                         onChanged: (value) {
                           setDialogState(() {
                             localUseBiometric = value!;
                           });
                         },
+                        activeColor: AppColors.primaryGradientStart,
+                        checkColor: Colors.white,
                       ),
                     ],
                   ),
@@ -130,7 +144,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
                     _confirmPinController.clear();
                     _emailController.clear();
                   },
-                  child: const Text('Cancelar'),
+                  child: Text(
+                    'Cancelar',
+                    style: GoogleFonts.poppins(color: AppColors.darkerBlue),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: _isLoading
@@ -209,7 +226,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
                       _emailController.clear();
                     }
                   },
-                  child: const Text('Confirmar'),
+                  child: Text(
+                    'Confirmar',
+                    style: GoogleFonts.poppins(color: Colors.white),
+                  ),
                   style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
                 ),
               ],
@@ -227,12 +247,18 @@ class _SecurityScreenState extends State<SecurityScreen> {
       builder: (dialogContext) {
         final formKey = GlobalKey<FormState>();
         return AlertDialog(
-          title: const Text('Mudar Email'),
+          title: Text(
+            'Mudar Email',
+            style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppColors.darkerBlue),
+          ),
           content: Form(
             key: formKey,
             child: TextFormField(
               controller: newEmailController,
-              decoration: const InputDecoration(labelText: 'Novo Email'),
+              decoration: InputDecoration(
+                labelText: 'Novo Email',
+                labelStyle: GoogleFonts.poppins(color: AppColors.textSecondary),
+              ),
               keyboardType: TextInputType.emailAddress,
               validator: (value) {
                 if (value == null || value.isEmpty) {
@@ -248,7 +274,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancelar'),
+              child: Text(
+                'Cancelar',
+                style: GoogleFonts.poppins(color: AppColors.darkerBlue),
+              ),
             ),
             ElevatedButton(
               onPressed: _isLoading
@@ -285,7 +314,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
                   });
                 }
               },
-              child: const Text('Confirmar'),
+              child: Text(
+                'Confirmar',
+                style: GoogleFonts.poppins(color: Colors.white),
+              ),
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.darkerBlue),
             ),
           ],
@@ -298,7 +330,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Segurança', style: TextStyle(color: Colors.white)),
+        title: Text(
+          'Segurança',
+          style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: AppColors.darkerBlue,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -306,17 +341,41 @@ class _SecurityScreenState extends State<SecurityScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            ListTile(
-              title: Text(_isPinSet
-                  ? 'Mudar PIN de Acesso'
-                  : 'Criar PIN de Acesso'),
-              onTap: _showPinDialog,
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              color: AppColors.cardBackground,
+              child: ListTile(
+                leading: Icon(Icons.lock, color: AppColors.primaryGradientStart),
+                title: Text(
+                  _isPinSet ? 'Mudar PIN de Acesso' : 'Criar PIN de Acesso',
+                  style: GoogleFonts.poppins(fontSize: 16, color: AppColors.darkerBlue),
+                ),
+                trailing: Icon(Icons.arrow_forward_ios, color: AppColors.primaryGradientStart, size: 16),
+                onTap: _showPinDialog,
+                contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              ),
             ),
+            const SizedBox(height: 16),
             if (_currentEmail != null)
-              ListTile(
-                title: const Text('Mudar Email'),
-                subtitle: Text(_currentEmail!),
-                onTap: _showChangeEmailDialog,
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                color: AppColors.cardBackground,
+                child: ListTile(
+                  leading: Icon(Icons.email, color: AppColors.primaryGradientStart),
+                  title: Text(
+                    'Mudar Email',
+                    style: GoogleFonts.poppins(fontSize: 16, color: AppColors.darkerBlue),
+                  ),
+                  subtitle: Text(
+                    _currentEmail!,
+                    style: GoogleFonts.poppins(fontSize: 14, color: AppColors.textSecondary),
+                  ),
+                  trailing: Icon(Icons.arrow_forward_ios, color: AppColors.primaryGradientStart, size: 16),
+                  onTap: _showChangeEmailDialog,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                ),
               ),
           ],
         ),

@@ -15,6 +15,8 @@ import 'package:DigiDoc/services/notification_service.dart';
 import 'package:DigiDoc/services/alert_checker.dart';
 import 'package:DigiDoc/screens/auth.dart';
 import 'package:DigiDoc/screens/forgot_pin.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -42,7 +44,6 @@ Future<void> main() async {
     print('Main: Status da permissão de bateria: $batteryStatus');
     if (batteryStatus.isDenied || batteryStatus.isPermanentlyDenied) {
       print('Main: Permissão de bateria negada, solicitando novamente');
-      //await openAppSettings();
     }
   }
 
@@ -76,42 +77,62 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
-      title: 'DigiDoc',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.darkerBlue),
-        useMaterial3: true,
-      ),
-      supportedLocales: const [
-        Locale('pt', 'PT'),
-        Locale('en', 'US'),
-      ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-
-      locale: const Locale('pt', 'PT'),
-      home: const AuthScreen(),
-      routes: {
-        '/alerts': (context) => MyHomePage(
+    return Consumer<CurrentStateProcessing>(
+      builder: (context, themeProvider, child) {
+        return MaterialApp(
+          navigatorKey: navigatorKey,
           title: 'DigiDoc',
-          camera: camera,
-          page_index: 1,
-        ),
-        '/home': (context) => MyHomePage(
-          title: 'DigiDoc',
-          camera: camera,
-          page_index: 0,
-        ),
-        '/security': (context) => SecurityScreen(),
-        '/forgot_pin': (context) => ForgotPinScreen(),
-        '/create_new_pin': (context) => CreateNewPinScreen(),
-      },
-      onGenerateRoute: (settings) {
-        return null;
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppColors.darkerBlue,
+              brightness: Brightness.light,
+            ),
+            scaffoldBackgroundColor: AppColors.background,
+            cardColor: AppColors.cardBackground,
+            textTheme: GoogleFonts.poppinsTextTheme(),
+            useMaterial3: true,
+          ),
+          darkTheme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: AppColors.darkerBlue,
+              brightness: Brightness.dark,
+            ),
+            scaffoldBackgroundColor: Colors.grey[900],
+            cardColor: Colors.grey[800],
+            textTheme: GoogleFonts.poppinsTextTheme().apply(
+              bodyColor: Colors.white,
+              displayColor: Colors.white,
+            ),
+            useMaterial3: true,
+          ),
+          themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+          supportedLocales: const [
+            Locale('pt', 'PT'),
+            Locale('en', 'US'),
+          ],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          locale: const Locale('pt', 'PT'),
+          home: const AuthScreen(),
+          routes: {
+            '/alerts': (context) => MyHomePage(
+              title: 'DigiDoc',
+              camera: camera,
+              page_index: 1,
+            ),
+            '/home': (context) => MyHomePage(
+              title: 'DigiDoc',
+              camera: camera,
+              page_index: 0,
+            ),
+            '/security': (context) => const SecurityScreen(),
+            '/forgot_pin': (context) => const ForgotPinScreen(),
+            '/create_new_pin': (context) => const CreateNewPinScreen(),
+          },
+        );
       },
     );
   }

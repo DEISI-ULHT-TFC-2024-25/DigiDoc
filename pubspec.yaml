@@ -53,6 +53,8 @@ dev_dependencies:
   mockito: ^5.4.0
   flutter_gen: ^5.3.0
   image_picker: ^1.1.2
+  google_fonts: ^6.2.1
+
 
 flutter:
   uses-material-design: true
@@ -60,6 +62,7 @@ flutter:
     - assets/model.tflite
     - assets/labels.txt
     - assets/defaultDocs.txt
+    - web/icons/Icon-512.png
 
 flutter_icons:
   android: true

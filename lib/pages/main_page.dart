@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../constants/color_app.dart';
 import '../screens/dossiers.dart';
 import '../screens/alerts.dart' as alerts;
@@ -47,10 +48,16 @@ class _MyHomePageState extends State<MyHomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.darkerBlue,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkPrimaryGradientStart.withAlpha(250)
+            : AppColors.primaryGradientStart,
         title: Text(
           _titles[_selectedIndex],
-          style: const TextStyle(color: Colors.white),
+          style: GoogleFonts.poppins(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? AppColors.darkTextPrimary
+                : AppColors.calmWhite,
+          ),
         ),
       ),
       body: _screens[_selectedIndex],
@@ -66,6 +73,25 @@ class _MyHomePageState extends State<MyHomePage> {
             }
           });
         },
+        selectedItemColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkPrimaryGradientStart
+            : AppColors.primaryGradientStart,
+        unselectedItemColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkTextSecondary
+            : AppColors.textSecondary,
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkCardBackground
+            : AppColors.cardBackground,
+        selectedLabelStyle: GoogleFonts.poppins(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkTextPrimary
+              : AppColors.textPrimary,
+        ),
+        unselectedLabelStyle: GoogleFonts.poppins(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? AppColors.darkTextSecondary
+              : AppColors.textSecondary,
+        ),
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.folder_shared),

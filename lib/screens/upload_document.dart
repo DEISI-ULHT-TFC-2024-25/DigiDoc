@@ -1,11 +1,12 @@
-// UploadDocumentScreen.dart
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../services/current_state_processing.dart';
 import '../widgets/DocumentImageViewer.dart';
 import 'info_confirmation.dart';
+import '../constants/color_app.dart';
 
 class UploadDocumentScreen extends StatefulWidget {
   final int dossierId;
@@ -29,10 +30,12 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
     if (widget.dossierId <= 0) {
       print('UploadDocumentScreen iniciado com dossierId inválido: ${widget.dossierId}');
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erro: ID do dossiê inválido')),
-        );
-        Navigator.pop(context);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Erro: ID do dossiê inválido')),
+          );
+          Navigator.pop(context);
+        }
       });
     }
   }
@@ -59,6 +62,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
         _uploadedDocuments.add(_selectedImage!);
         _selectedImage = null;
       });
+      Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(false);
     }
   }
 
@@ -78,6 +82,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
     setState(() {
       _selectedImage = null;
     });
+    Provider.of<CurrentStateProcessing>(context, listen: false).setProcessing(false);
   }
 
   void _navigateToConfirmation() {
@@ -97,14 +102,24 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeProvider = Provider.of<CurrentStateProcessing>(context);
+    final isDarkMode = themeProvider.isDarkMode;
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.black,
-        title: const Text('Carregar Documento', style: TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: isDarkMode ? AppColors.darkPrimaryGradientStart : AppColors.darkerBlue,
+        title: Text(
+          'Carregar Documento',
+          style: GoogleFonts.poppins(
+            color: isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite,
+          ),
+        ),
+        iconTheme: IconThemeData(
+          color: isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite,
+        ),
       ),
       body: Container(
-        color: Colors.black,
+        color: isDarkMode ? AppColors.darkBackground : AppColors.background,
         child: Column(
           children: [
             Expanded(
@@ -125,6 +140,7 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
             if (_uploadedDocuments.isNotEmpty)
               Container(
                 height: 100,
+                color: isDarkMode ? AppColors.darkCardBackground : AppColors.cardBackground,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: _uploadedDocuments.length,
@@ -146,11 +162,15 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                           child: GestureDetector(
                             onTap: () => _deleteImage(index),
                             child: Container(
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.black,
+                                color: isDarkMode ? AppColors.darkPrimaryGradientStart : AppColors.darkerBlue,
                               ),
-                              child: const Icon(Icons.close, color: Colors.white, size: 20),
+                              child: Icon(
+                                Icons.close,
+                                color: isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite,
+                                size: 20,
+                              ),
                             ),
                           ),
                         ),
@@ -159,71 +179,81 @@ class _UploadDocumentScreenState extends State<UploadDocumentScreen> {
                   },
                 ),
               ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Column(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.change_circle,
-                        color: _selectedImage == null ? Colors.grey : Colors.white,
-                        size: 50,
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Column(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.change_circle,
+                          color: _selectedImage == null
+                              ? (isDarkMode ? AppColors.darkTextSecondary : Colors.grey)
+                              : (isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite),
+                          size: 50,
+                        ),
+                        onPressed: _selectedImage == null ? null : _startCorrection,
                       ),
-                      onPressed: _selectedImage == null ? null : _startCorrection,
-                    ),
-                    Text(
-                      "Corrigir",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _selectedImage == null ? Colors.grey : Colors.white,
+                      Text(
+                        "Corrigir",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: _selectedImage == null
+                              ? (isDarkMode ? AppColors.darkTextSecondary : Colors.grey)
+                              : (isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 30),
-                Column(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        _selectedImage == null ? Icons.file_upload_outlined : Icons.add_photo_alternate,
-                        color: _selectedImage == null ? Colors.white : Colors.white,
-                        size: 50,
+                    ],
+                  ),
+                  const SizedBox(width: 30),
+                  Column(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          _selectedImage == null ? Icons.file_upload_outlined : Icons.add_photo_alternate,
+                          color: isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite,
+                          size: 50,
+                        ),
+                        onPressed: _selectedImage == null ? _uploadImage : _addDocument,
                       ),
-                      onPressed: _selectedImage == null ? _uploadImage : _addDocument,
-                    ),
-                    Text(
-                      _selectedImage == null ? "Carregar" : "Adicionar",
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: Colors.white,
+                      Text(
+                        _selectedImage == null ? "Carregar" : "Adicionar",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 30),
-                Column(
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.check_circle,
-                        color: _uploadedDocuments.isNotEmpty && _selectedImage == null ? Colors.white : Colors.grey,
-                        size: 50,
+                    ],
+                  ),
+                  const SizedBox(width: 30),
+                  Column(
+                    children: [
+                      IconButton(
+                        icon: Icon(
+                          Icons.check_circle,
+                          color: _uploadedDocuments.isNotEmpty && _selectedImage == null
+                              ? (isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite)
+                              : (isDarkMode ? AppColors.darkTextSecondary : Colors.grey),
+                          size: 50,
+                        ),
+                        onPressed: _uploadedDocuments.isNotEmpty && _selectedImage == null ? _navigateToConfirmation : null,
                       ),
-                      onPressed: _uploadedDocuments.isNotEmpty && _selectedImage == null ? _navigateToConfirmation : null,
-                    ),
-                    Text(
-                      "Pronto",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _uploadedDocuments.isNotEmpty && _selectedImage == null ? Colors.white : Colors.grey,
+                      Text(
+                        "Pronto",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          color: _uploadedDocuments.isNotEmpty && _selectedImage == null
+                              ? (isDarkMode ? AppColors.darkTextPrimary : AppColors.calmWhite)
+                              : (isDarkMode ? AppColors.darkTextSecondary : Colors.grey),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 20),
           ],
         ),
       ),
